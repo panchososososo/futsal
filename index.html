@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Bitácora del Arquero</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: una pantalla vertical tipo HUD de Night City. Arriba la fase y la cuota semanal, luego el día que editas, el calendario tipo GitHub y secciones plegables. Tema oscuro único por elección. */
+:root{
+  color-scheme:dark;
+  --bg:#07080d; --panel:#0f1119; --panel-2:#171a26; --line:#262a3b; --ink:#e9ecf5; --muted:#8a90a8;
+  --yellow:#f3e600; --cyan:#00e5ff; --pink:#ff2a6d; --red:#ff4d4d; --green:#3cf0a0;
+  --c0:#151824; --c-rest:#2a2f44;
+  --display:"Chakra Petch","Rajdhani","Arial Narrow",sans-serif;
+  --mono:"Share Tech Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --cut:12px;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--ink);font-family:var(--display);font-size:16px;line-height:1.4;font-variant-numeric:tabular-nums;position:relative}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:20;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.025) 0 1px,transparent 1px 3px)}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 56px;display:grid;gap:18px}
+h1,h2,h3{margin:0;font-weight:700;text-wrap:balance;text-transform:uppercase;letter-spacing:.04em}
+p{margin:0}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+.tag{font-family:var(--mono);font-size:.78rem;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.tag b{color:var(--yellow);font-weight:400}
+
+/* Cabecera */
+.top{display:grid;gap:6px}
+.topbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.sync{font-family:var(--mono);font-size:.75rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.sync i{width:7px;height:7px;background:var(--muted);display:inline-block}
+.sync i.ok{background:var(--green)} .sync i.warn{background:var(--yellow)}
+.phase{font-size:clamp(2.2rem,9vw,3.6rem);line-height:.95;color:var(--yellow);text-shadow:2px 0 var(--pink),-2px 0 var(--cyan)}
+.phase small{display:block;font-size:.38em;color:var(--ink);text-shadow:none;letter-spacing:.12em;margin-top:6px}
+
+/* Cuota */
+.quota{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px}
+.q{background:var(--panel);border:1px solid var(--line);padding:10px 12px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,0 100%);display:grid;gap:8px}
+.q .lbl{display:flex;justify-content:space-between;gap:6px;align-items:baseline;font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.q .lbl b{flex:none;font-family:var(--display);font-size:1.3rem;color:var(--ink);font-weight:700}
+.q.done .lbl b{color:var(--green)}
+.segs{display:flex;gap:4px}
+.segs span{flex:1;height:8px;background:var(--c0);transform:skewX(-20deg)}
+.segs span.on{background:var(--k,var(--cyan));box-shadow:0 0 8px var(--k,var(--cyan))}
+
+/* Panel de día */
+.day{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--yellow);padding:14px;display:grid;gap:14px;min-width:0;scroll-margin-top:12px}
+.dayhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.dayhead h2{font-size:1.5rem}
+.acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.act{border:1px solid var(--line);background:var(--panel-2);padding:14px 10px;text-align:left;display:grid;gap:2px;clip-path:polygon(0 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%);transition:background .15s,border-color .15s}
+.act b{font-size:1.15rem;letter-spacing:.06em}
+.act span{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.act[aria-pressed="true"]{background:var(--k);border-color:var(--k);color:#07080d}
+.act[aria-pressed="true"] span{color:#07080d}
+.k-gym{--k:var(--cyan)} .k-arco{--k:var(--pink)} .k-partido{--k:var(--yellow)} .k-rest{--k:#8a90a8}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:transparent;padding:5px 10px;font-size:.85rem;font-family:var(--mono)}
+.chip[aria-pressed="true"]{border-color:var(--cyan);color:var(--cyan)}
+.list{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.95rem}
+.list li.swap{color:var(--yellow)}
+.list li::marker{color:var(--muted)}
+.alert{border:1px solid var(--k);background:color-mix(in srgb,var(--k) 10%,transparent);padding:10px 12px;font-size:.92rem;display:grid;gap:2px}
+.alert b{color:var(--k);text-transform:uppercase;letter-spacing:.05em;font-size:.82rem;font-family:var(--mono)}
+.a-warn{--k:var(--yellow)} .a-bad{--k:var(--red)} .a-info{--k:var(--cyan)} .a-ok{--k:var(--green)}
+
+/* Dolor */
+.pain{display:grid;gap:6px}
+.prow{display:grid;grid-template-columns:72px 1fr 28px;gap:10px;align-items:center;font-size:.92rem}
+.prow input{width:100%;accent-color:var(--pink)}
+.prow output{font-family:var(--mono);text-align:right;font-size:1.05rem}
+.prow output.hi{color:var(--red)}
+
+/* Formularios */
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.f{display:grid;gap:3px;min-width:0}
+.f label{font-family:var(--mono);font-size:.72rem;color:var(--muted);text-transform:uppercase}
+.f input{background:var(--bg);border:1px solid var(--line);padding:8px;width:100%;min-width:0}
+.f input:disabled{opacity:.4}
+.full{grid-column:1/-1}
+.btn{border:1px solid var(--yellow);background:var(--yellow);color:#07080d;padding:9px 16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.btn.ghost{background:transparent;color:var(--yellow)}
+.btn.sm{padding:5px 10px;font-size:.8rem}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spread{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+details.inner summary{cursor:pointer;font-family:var(--mono);font-size:.82rem;color:var(--cyan);text-transform:uppercase}
+details.inner[open] summary{margin-bottom:8px}
+
+/* Calendario */
+.cal{background:var(--panel);border:1px solid var(--line);padding:12px;display:grid;gap:10px;min-width:0}
+.calscroll{overflow-x:auto;padding-bottom:4px;scrollbar-color:var(--line) transparent;min-width:0}
+.calgrid{display:grid;grid-template-rows:14px repeat(7,13px);grid-auto-flow:column;grid-auto-columns:13px;gap:3px;width:max-content;padding:2px}
+.calgrid .m{font-family:var(--mono);font-size:.62rem;color:var(--muted);white-space:nowrap;overflow:visible}
+.calgrid .m.ph{color:var(--yellow)}
+.dl{font-family:var(--mono);font-size:.6rem;color:var(--muted);line-height:13px}
+.cell{width:13px;height:13px;border:0;padding:0;background:var(--c0);border-radius:2px;position:relative}
+.cell.fut{opacity:.45}
+.cell.rest{background:var(--c-rest)}
+.cell.gym{background:var(--cyan)}
+.cell.cancha{background:var(--yellow)}
+.cell.arco{background:var(--pink)}
+.cell.combo{background:linear-gradient(135deg,var(--cyan) 50%,var(--yellow) 50%)}
+.cell.pl{box-shadow:inset 0 0 0 2px var(--k)}
+.cell.sg{box-shadow:inset 0 0 0 1px var(--k);background:transparent}
+.sugg{border:1px solid var(--k);padding:12px;display:grid;gap:8px;background:color-mix(in srgb,var(--k) 7%,transparent)}
+.sname{font-size:1.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--k);line-height:1}
+.pz{display:grid;gap:6px;padding-block:6px;border-bottom:1px solid var(--line)}
+.pz:last-child{border-bottom:0}
+.lv{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.lvb{border:1px solid var(--line);background:var(--panel-2);padding:6px 4px;display:grid;gap:2px;text-align:center;min-width:0}
+.lvb b{font-size:.9rem}
+.lvb span{font-size:.62rem;color:var(--muted);line-height:1.15}
+.lvb.l0{--k:var(--green)} .lvb.l2{--k:var(--yellow)} .lvb.l5{--k:#ff9a3c} .lvb.l8{--k:var(--red)}
+.lvb[aria-pressed="true"]{background:var(--k);border-color:var(--k);color:#07080d}
+.lvb[aria-pressed="true"] span{color:#07080d}
+.cell.pain::after{content:"";position:absolute;inset:-2px;border:2px solid var(--red);border-radius:3px}
+.cell.today{outline:1px solid var(--ink);outline-offset:1px}
+.cell.sel{outline:2px solid var(--yellow);outline-offset:1px}
+.calwrap{display:grid;grid-template-columns:auto 1fr;gap:6px;min-width:0}
+.daylabels{display:grid;grid-template-rows:14px repeat(7,13px);gap:3px;padding-top:2px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:.72rem;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+
+/* Secciones */
+details.sec{background:var(--panel);border:1px solid var(--line)}
+details.sec>summary{list-style:none;cursor:pointer;padding:14px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary h3{font-size:1.05rem}
+details.sec>summary::after{content:"+";font-family:var(--mono);color:var(--yellow);font-size:1.2rem}
+details.sec[open]>summary::after{content:"−"}
+.secbody{padding:0 14px 16px;display:grid;gap:12px;min-width:0}
+.crit{display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start}
+.crit i{width:16px;height:16px;border:1px solid var(--muted);margin-top:3px;display:grid;place-content:center;font-style:normal;font-size:.7rem}
+.crit.met i{background:var(--green);border-color:var(--green);color:#07080d}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.stat{background:var(--panel-2);padding:10px;display:grid;gap:2px;min-width:0}
+.stat .v{font-size:1.6rem;font-weight:700;line-height:1.05}
+.stat .d{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.up{color:var(--green)!important} .down{color:var(--red)!important}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--mono);font-weight:400;color:var(--muted);font-size:.72rem;text-transform:uppercase}
+.todo{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;padding-block:6px}
+.todo input,.chk{appearance:none;width:20px;height:20px;border:1px solid var(--muted);background:transparent;margin:2px 0 0;display:grid;place-content:center;flex:none}
+.todo input:checked,.chk:checked{background:var(--green);border-color:var(--green)}
+.todo input:checked::after,.chk:checked::after{content:"";width:9px;height:5px;border:2px solid #07080d;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.todo.done .tt{color:var(--muted);text-decoration:line-through}
+.grp{font-family:var(--mono);font-size:.75rem;color:var(--yellow);text-transform:uppercase;margin-top:6px}
+footer{font-size:.8rem;color:var(--muted);display:grid;gap:4px}
+@media (prefers-reduced-motion:no-preference){
+  .phase{animation:glitch 6s infinite steps(1)}
+  @keyframes glitch{0%,96%,100%{text-shadow:2px 0 var(--pink),-2px 0 var(--cyan)}97%{text-shadow:-3px 0 var(--pink),3px 0 var(--cyan);transform:translateX(1px)}98%{text-shadow:4px 0 var(--pink),-1px 0 var(--cyan);transform:translateX(-1px)}}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="topbar"><span class="tag">// bitácora del arquero · <b>pancho</b></span><span class="sync" id="sync"><i></i><span>Cargando…</span></span></div>
+    <h1 class="phase" id="phase">F1 // Retomar<small>Semana 1</small></h1>
+  </header>
+
+  <div class="quota" id="quota"></div>
+  <section class="day" id="day" aria-live="polite"></section>
+  <section class="cal" id="cal"></section>
+  <div id="secs" style="display:grid;gap:10px"></div>
+
+  <footer>
+    <p>Basado en tu plan “Plan arquero de futsal: de vuelta a competir”. Los pesos de cada serie van en fierros.</p>
+    <p>Regla del dolor: sobre 3 de 10, si empeora en la sesión o sigue al otro día, para ese ejercicio y ve al kine.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- Plan ---------- */
+const CANCHA_SIN_ALTA=[
+  "Vendaje firme de muñeca (tape rígido o muñequera) y guantes puestos",
+  "Calienta la muñeca 5 min: círculos, abrir y cerrar la mano, toques suaves",
+  "Ataja con el cuerpo: bloqueo en cruz y rodilla al suelo antes que la estirada",
+  "Despeja con la mano abierta y al costado; no caigas apoyando la mano",
+  "Si la muñeca pasa de 3 sobre 10 o duele más al atajar, sal o juega de campo",
+  "Mañana anota cómo amaneció la muñeca"
+];
+const ARCO_SESION=[
+  "Activación 10 min: toques de manos contra la pared, caídas suaves de rodillas",
+  "Posición base y laterales cortos sin cruzar pies, 6 x 10 s",
+  "Bloqueos 15 min: cruz a 4 a 6 m 4 x 6 · rodilla al suelo 4 x 6 por lado",
+  "1 contra 1 10 min: achique a 2 o 3 m, frenar en base, 10 a 15 reps",
+  "Media distancia 10 min: remates de 8 a 12 m con pantalla",
+  "Pies y saque 10 min: pases con ambos pies a 10 y 20 m, saque rápido",
+  "Juego 5 a 10 min: 2v1, 3v2 y defensa del 5 contra 4"
+];
+// Ítem: string | {t, sinAlta}. "COPEN" usa los segundos actuales.
+const FASES=[
+ {n:1,nombre:"Retomar",rango:"oct a nov 2026",
+  cuota:[{k:"gym",n:3,label:"Gimnasio"},{k:"cancha",n:1,label:"Cancha",tipos:["arco","partido"]}],
+  rpe:"RPE 6 a 7, nada al fallo",
+  gym:[
+   {id:"A",nombre:"Gimnasio A",pierna:true,items:["Sentadilla goblet 3x8","Peso muerto rumano 3x8","Zancada lateral 3x8 por lado",{t:"Press con mancuernas 3x10",sinAlta:"Press en máquina agarre neutro 3x10 (si duele, sáltalo)"},{t:"Remo con mancuerna 3x10",sinAlta:"Remo en máquina agarre neutro 3x10, si no duele"},"COPEN","Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]},
+   {id:"B",nombre:"Gimnasio B",pierna:false,items:["Hip thrust 3x10","Step-up al cajón 3x8 por lado","Curl nórdico asistido 3x5",{t:"Press militar 3x8",sinAlta:"Press militar en máquina agarre neutro 3x8, o sáltalo"},{t:"Jalón o dominada asistida 3x8",sinAlta:"Jalón 3x8 solo si no duele (sin dominadas)"},"Pallof press 3x10 por lado"]},
+   {id:"C",nombre:"Gimnasio C + agilidad",pierna:true,items:["Saltos pogo 3x15","Salto a cajón bajo 3x5","Desplazamiento lateral 6x8 s","Reacción a señal 6x5 s","Sentadilla búlgara 3x8",{t:"Plancha lateral 3x30 s",sinAlta:"Plancha lateral sobre antebrazo 3x30 s"},"Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]}
+  ],
+  criterios:[
+   {id:"f1_semanas",txt:"3 semanas seguidas cumpliendo la cuota",auto:"semanas3"},
+   {id:"f1_dolor",txt:"Sin dolor de ingle, rodilla ni espalda en 2 semanas",auto:"sinDolor"},
+   {id:"f1_alta",txt:"Alta médica de la muñeca",auto:"alta"}
+  ]},
+ {n:2,nombre:"Construir",rango:"dic 2026 a feb 2027",
+  cuota:[{k:"gym",n:3,label:"Gimnasio"},{k:"arco",n:2,label:"Arco",tipos:["arco"]},{k:"partido",n:1,label:"Partido",tipos:["partido"]}],
+  rpe:"RPE 7 a 8, sube peso al completar todas las series",
+  gym:[
+   {id:"FP",nombre:"Fuerza piernas",pierna:true,items:["Saltos al cajón 4x4 (antes de la fuerza)","Sentadilla trasera 4x5","Peso muerto hexagonal 3x5","Curl nórdico 3x5","COPEN"]},
+   {id:"TS",nombre:"Tren superior + core",pierna:false,items:["Press banca 4x6","Dominadas 4x6","Press militar 3x8","Remo 3x8","Balón medicinal lateral 4x5 por lado"]},
+   {id:"PA",nombre:"Potencia + agilidad",pierna:true,items:["Skater 4x5 por lado","Salto horizontal 3x3","Búlgara 3x6","Intervalos 8 x (20 s fuerte / 40 s suave)"]}
+  ],
+  criterios:[
+   {id:"f2_sent",txt:"Sentadilla 100 kg x 5 con RIR 2",auto:"sent100",manual:true},
+   {id:"f2_salto",txt:"Salto vertical +10% sobre tu partida",auto:"salto10"}
+  ]},
+ {n:3,nombre:"Competir",rango:"mar a jun 2027",
+  cuota:[{k:"gym",n:2,label:"Gimnasio"},{k:"arco",n:2,label:"Arco",tipos:["arco"]},{k:"partido",n:1,label:"Partido",tipos:["partido"]}],
+  rpe:"Potencia y velocidad, poco volumen",
+  gym:[
+   {id:"PP",nombre:"Potencia piernas",pierna:true,items:["Sentadilla pesada 3x3 + 4 saltos al cajón al tiro","Saltos con hexagonal liviana 4x4","Saltos en profundidad 30 cm 3x4","COPEN"]},
+   {id:"TV",nombre:"Tren superior y velocidad",pierna:false,items:["Press banca 3x5","Dominadas lastradas 3x5","Balón medicinal 4x5","Sprints de reacción 3 a 5 m, 8 reps"]}
+  ],
+  criterios:[{id:"f3_club",txt:"Entrenando con un club ANFP de ascenso",manual:true}]},
+ {n:4,nombre:"Consolidar",rango:"jul a dic 2027",
+  cuota:[{k:"gym",n:2,label:"Gimnasio"},{k:"arco",n:3,label:"Club o arco",tipos:["arco"]},{k:"partido",n:1,label:"Partido",tipos:["partido"]}],
+  rpe:"40 min al 80% del volumen de la fase 3, a 48 h o más del partido",
+  gym:[
+   {id:"PP",nombre:"Potencia piernas (80%)",pierna:true,items:["Lo de la fase 3 al 80% del volumen"]},
+   {id:"TV",nombre:"Tren superior y velocidad (80%)",pierna:false,items:["Lo de la fase 3 al 80% del volumen"]}
+  ],
+  criterios:[{id:"f4_titular",txt:"Ser titular y evaluar Primera para 2028",manual:true}]}
+];
+const CARGAS=[["Sentadilla","75 kg 4x5 RIR 3","100 kg 4x5"],["Peso muerto rumano","50 kg 3x8","70 kg 3x8"],["Búlgara","12,5 kg 3x8","17,5 kg 3x8"],["Jalón","41 kg 4x8 si no duele","50 kg 4x8"],["Press","Máquina agarre neutro","22,5 kg 4x8"],["Dominadas","Pausa hasta el alta","4x6"]];
+const PENDIENTES=[
+ {g:"Ahora",items:[
+  {id:"medico",t:"Hora al médico por la muñeca, con la eco",d:"Pregunta: qué tiene, cuándo atajo sin vendaje, ¿kine o férula?"},
+  {id:"kine",t:"Kinesiólogo deportivo: muñeca + cadera e ingle",d:"20.000 a 40.000 CLP, menos con Fonasa o clínica de la U"},
+  {id:"uni",t:"Preguntar en deportes de la universidad",d:"Gimnasio, selección de futsal, kine barato"},
+  {id:"tests0",t:"Tests de punto de partida",d:"Salto y sentadilla. Copenhague y 5-10-5 después del kine"}]},
+ {g:"Nov o dic 2026",items:[
+  {id:"ecg",t:"Chequeo deportivo con electrocardiograma",d:""},
+  {id:"sangre",t:"Examen de sangre: hemograma, ferritina, vitamina D",d:""},
+  {id:"creatina",t:"Creatina 3 a 5 g diarios",d:"Unos 10.000 CLP al mes"},
+  {id:"protec",t:"Rodilleras, coderas y short acolchado",d:"35.000 a 60.000 CLP"}]},
+ {g:"Ene 2027",items:[
+  {id:"equipo",t:"Entrar a un equipo o liga que entrene en serio",d:"Ofrécete como arquero de entrenamiento"},
+  {id:"arquero2",t:"Otro arquero para entrenar 1 vez por semana",d:""},
+  {id:"guantes",t:"2 pares de guantes de futsal",d:"20.000 a 40.000 CLP c/u"},
+  {id:"zapas",t:"Zapatillas de futsal",d:"40.000 a 70.000 CLP"}]}
+];
+const ZONAS=[["muneca","Muñeca"],["ingle","Ingle"],["rodilla","Rodilla"],["espalda","Espalda"]];
+const TIPOS={gym:{label:"Gimnasio",cls:"k-gym"},arco:{label:"Arco",sub:"Entrenamiento",cls:"k-arco"},partido:{label:"Partido",sub:"o pichanga",cls:"k-partido"},rest:{label:"Descanso",sub:"o caminata",cls:"k-rest"}};
+
+/* ---------- Fechas ---------- */
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parse=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const add=(d,n)=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x};
+const monday=d=>add(d,-((d.getDay()+6)%7));
+const diff=(a,b)=>Math.round((parse(iso(b))-parse(iso(a)))/864e5);
+const MES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const DIA=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const fmt=d=>d.getDate()+" "+MES[d.getMonth()];
+const HOY=()=>iso(new Date());
+
+/* ---------- Estado ---------- */
+const DEFAULT={v:2,fase:1,faseInicio:{"1":"2026-10-19"},muneca:{alta:false,fecha:null},kineIngle:false,dias:{},copen:{seg:10,subidas:[]},tests:[],pendientes:{},manual:{},diasJuego:[1,3,4]};
+const clone=o=>JSON.parse(JSON.stringify(o));
+let S=clone(DEFAULT), docRef=null, timer=null, chain=Promise.resolve(), dirty=false;
+let sel=HOY(), calScroll=null;
+const LS="bitacora-arquero-v2";
+
+function normal(x){
+  const s=Object.assign(clone(DEFAULT),x||{});
+  if(s.v!==2){ // migra la versión 1
+    s.dias=s.dias||{};
+    for(const [k,r] of Object.entries(x&&x.dolor||{})){(s.dias[k]=s.dias[k]||{}).d=r}
+    s.v=2; delete s.semanas; delete s.dolor; delete s.partidos; delete s.descargas;
+  }
+  return s;
+}
+function lsLoad(){try{const r=localStorage.getItem(LS);return r?JSON.parse(r):null}catch(e){return null}}
+function lsSave(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
+function sync(st,t){document.getElementById("sync").innerHTML='<i class="'+st+'"></i><span>'+t+'</span>'}
+function save(){
+  S.actualizado=new Date().toISOString(); lsSave(); dirty=true; clearTimeout(timer);
+  if(!docRef){sync("warn","Solo en este dispositivo");return}
+  sync("","Guardando…");
+  timer=setTimeout(()=>{chain=chain.then(async()=>{if(!dirty)return;dirty=false;
+    try{await docRef.set(clone(S));sync("ok","Guardado")}catch(e){dirty=true;sync("warn","Sin nube ("+(e&&e.code||"error")+")")}})},600);
+}
+async function boot(){
+  const local=lsLoad(); if(local)S=normal(local);
+  render();
+  let db=null; try{db=window.claude&&window.claude.use?await window.claude.use("db"):null}catch(e){}
+  if(!db){sync("warn","Solo en este dispositivo");return}
+  docRef=db.doc("estado/principal");
+  try{
+    const snap=await docRef.get();
+    if(snap.exists){const r=snap.data()||{};
+      if(!local||(r.actualizado||"")>=(local.actualizado||"")){S=normal(r);lsSave();if(r.v!==2)save()}else save();
+    }else save();
+    if(!dirty)sync("ok","Guardado"); render();
+  }catch(e){sync("warn","Sin nube, guardando aquí")}
+  document.addEventListener("visibilitychange",async()=>{
+    if(document.visibilityState!=="visible"||!docRef||dirty)return;
+    try{const s=await docRef.get();if(s.exists){const r=s.data()||{};if((r.actualizado||"")>(S.actualizado||"")){S=normal(r);lsSave();render()}}}catch(e){}
+  });
+}
+
+/* ---------- Lógica ---------- */
+const F=()=>FASES[S.fase-1];
+const ini=()=>parse(S.faseInicio[String(S.fase)]||iso(monday(new Date())));
+const semana=d=>Math.floor(diff(monday(ini()),monday(d))/7)+1;
+const dia=k=>S.dias[k]||{};
+const tiene=(k,t)=>(dia(k).a||[]).includes(t);
+function conteo(lun){const c={gym:0,arco:0,partido:0,rest:0};for(let i=0;i<7;i++){for(const t of dia(iso(add(lun,i))).a||[])c[t]++}return c}
+function cuenta(q,c){return q.tipos?q.tipos.reduce((s,t)=>s+c[t],0):c[q.k]}
+function semanaOk(lun){const c=conteo(lun);return F().cuota.every(q=>cuenta(q,c)>=q.n)}
+function racha(){let d=monday(new Date()),n=0;const i0=monday(ini());if(!semanaOk(d))d=add(d,-7);while(d>=i0&&semanaOk(d)){n++;d=add(d,-7)}return n}
+function dolorMax(k){const d=dia(k).d||{};return Math.max(0,...ZONAS.map(z=>d[z[0]]||0))}
+function diasDolor(n,zs){let c=0;for(let i=0;i<n;i++){const d=dia(iso(add(new Date(),-i))).d;if(d&&zs.some(z=>(d[z]||0)>0))c++}return c}
+function siguienteGym(){
+  const g=F().gym; const ks=Object.keys(S.dias).filter(k=>k<sel&&S.dias[k].g).sort();
+  const last=ks.length?S.dias[ks[ks.length-1]].g:null; const i=g.findIndex(x=>x.id===last);
+  return g[(i+1)%g.length];
+}
+const epley=(kg,r)=>kg*(1+r/30);
+const T=()=>[...S.tests].sort((a,b)=>a.fecha<b.fecha?-1:1);
+function serie(k){const t=T();if(k==="rm")return t.filter(x=>x.sentKg&&x.sentReps).map(x=>epley(+x.sentKg,+x.sentReps));return t.filter(x=>x[k]!==""&&x[k]!=null).map(x=>+x[k])}
+function partidos(){return Object.entries(S.dias).filter(([k,v])=>v.p).map(([k,v])=>Object.assign({fecha:k},v.p)).sort((a,b)=>a.fecha<b.fecha?-1:1)}
+function met(c){
+  switch(c.auto){
+    case "semanas3":return racha()>=3;
+    case "sinDolor":return diasDolor(14,["ingle","rodilla","espalda"])===0;
+    case "alta":return !!S.muneca.alta;
+    case "salto10":{const s=serie("salto");return s.length>1&&s[s.length-1]>=s[0]*1.1}
+    case "sent100":return !!S.manual[c.id]||T().some(x=>+x.sentKg>=100&&+x.sentReps>=5);
+  }
+  return !!S.manual[c.id];
+}
+function detalle(c){
+  if(c.auto==="semanas3")return racha()+" de 3";
+  if(c.auto==="sinDolor"){const n=diasDolor(14,["ingle","rodilla","espalda"]);return n?n+" días con molestia":"Todo en 0"}
+  if(c.auto==="alta")return S.muneca.alta?"Alta el "+fmt(parse(S.muneca.fecha)):"Pendiente";
+  if(c.auto==="salto10"){const s=serie("salto");return s.length?"Partida "+s[0]+" cm, meta "+(s[0]*1.1).toFixed(1)+" cm":"Registra tu test de partida"}
+  return "";
+}
+
+/* ---------- Render ---------- */
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function items(arr){return arr.map(it=>{
+  if(it==="COPEN")return '<li>Copenhague corta (rodilla en el banco) 3 x '+S.copen.seg+' s por lado</li>';
+  if(typeof it==="object")return !S.muneca.alta&&it.sinAlta?'<li class="swap">'+esc(it.sinAlta)+'</li>':'<li>'+esc(it.t)+'</li>';
+  return '<li>'+esc(it)+'</li>'}).join("")}
+
+const NIVELES=[[0,"Nada","No lo sientes"],[2,"Leve","Lo notas, pero te mueves igual"],[5,"Molesta","Te hace cambiar el movimiento o evitar algo"],[8,"Fuerte","Duele quieto o no puedes hacerlo"]];
+const PRUEBA={muneca:"Apoya la palma en la mesa y carga tu peso encima. Después aprieta fuerte un puño.",ingle:"Acostado, aprieta un cojín entre las rodillas 5 s. Después, de pie, abre una pierna hacia el lado.",rodilla:"Haz 5 sentadillas lo más profundo que puedas.",espalda:"Inclínate a tocarte los pies y gira el tronco a cada lado."};
+const nivel=v=>v==null?null:v<=0?0:v<=3?2:v<=6?5:8;
+
+function cuotaSemana(lun){
+  const f=F();
+  return f.cuota.map(q=>{
+    if(f.n===1&&q.k==="cancha"&&semana(lun)>=3&&diasDolor(14,["ingle"])===0)return Object.assign({},q,{n:2,extra:true});
+    return q});
+}
+function combos(arr,k){if(k===0)return[[]];if(arr.length<k)return[];const[h,...t]=arr;return combos(t,k-1).map(c=>[h,...c]).concat(combos(t,k))}
+const gymDe=id=>F().gym.find(x=>x.id===id);
+function ultimoGym(antesDe){const ks=Object.keys(S.dias).filter(k=>k<antesDe&&S.dias[k].g&&(S.dias[k].a||[]).includes("gym")).sort();return ks.length?S.dias[ks[ks.length-1]].g:null}
+function rotDesde(last,n){const g=F().gym;let i=g.findIndex(x=>x.id===last);const out=[];for(let j=0;j<n;j++){i=(i+1)%g.length;out.push(g[i].id)}return out}
+
+// Sugiere qué hacer cada día libre desde hoy, semana a semana, respetando lo hecho y lo planeado a mano.
+let SUG=null;
+function sug(){
+  if(SUG)return SUG;
+  const out={},hoy=HOY();let lun=monday(new Date());let last=ultimoGym(hoy);
+  for(let w=0;w<8;w++,lun=add(lun,7)){
+    const days=[...Array(7)].map((_,i)=>iso(add(lun,i)));
+    const hecho=k=>(dia(k).a||[]).length>0, plan=k=>dia(k).plan||[];
+    const libres=days.filter(k=>k>=hoy&&!hecho(k)&&!plan(k).length);
+    const c=conteo(lun);for(const k of days)if(!hecho(k))for(const t of plan(k))c[t]++;
+    const q=cuotaSemana(lun);
+    const cancha=q.filter(x=>x.k!=="gym");
+    const juegosFalta=cancha.map(x=>({x,n:Math.max(0,x.n-cuenta(x,c))}));
+    const gymFalta=Math.max(0,(q.find(x=>x.k==="gym")||{n:0}).n-c.gym);
+    const esJuego=k=>{const L=(dia(k).a||[]).concat(plan(k));return L.includes("arco")||L.includes("partido")};
+    const fijosJ=days.map((k,i)=>esJuego(k)?i:-1).filter(i=>i>=0);
+    // Juegos: en tus días de juego, lo más separados posible; si empatan, el más tarde.
+    let nJ=juegosFalta.reduce((s,y)=>s+y.n,0);
+    const candJ=libres.filter(k=>S.diasJuego.includes(days.indexOf(k)));
+    nJ=Math.min(nJ,candJ.length);
+    let mejorJ=[],sc=-1e9;
+    for(const cmb of combos(candJ,nJ)){const idx=fijosJ.concat(cmb.map(k=>days.indexOf(k))).sort((a,b)=>a-b);
+      let gap=7;for(let i=1;i<idx.length;i++)gap=Math.min(gap,idx[i]-idx[i-1]);const s=gap*10+cmb.reduce((s,k)=>s+days.indexOf(k),0)/10;if(s>sc){sc=s;mejorJ=cmb}}
+    let cola=[];for(const y of juegosFalta)for(let i=0;i<y.n;i++)cola.push(y.x.tipos.includes("partido")?"partido":"arco");
+    if(S.fase===1)cola=cola.map(()=>"partido");
+    mejorJ.forEach((k,i)=>{out[k]={tipos:[cola[i]||"partido"]}});
+    const juegoIdx=new Set(fijosJ.concat(mejorJ.map(k=>days.indexOf(k))));
+    // Gimnasio: en los otros días, sin pierna pesada el día antes de jugar, evitando días seguidos y el domingo.
+    const candG=libres.filter(k=>!out[k]);
+    const nG=Math.min(gymFalta,candG.length);
+    const gymHecho=new Set(days.map((k,i)=>(dia(k).a||[]).includes("gym")||plan(k).includes("gym")?i:-1).filter(i=>i>=0));
+    let mejorG=null,sg=-1e9;
+    for(const cmb of combos(candG,nG)){
+      const ids=rotDesde(last,cmb.length);const idx=cmb.map(k=>days.indexOf(k));
+      // cambia pierna por tren superior si cae el día antes de jugar
+      for(let i=0;i<idx.length;i++)if(juegoIdx.has(idx[i]+1)&&gymDe(ids[i]).pierna){const j=ids.findIndex((id,jj)=>!gymDe(id).pierna&&!juegoIdx.has(idx[jj]+1));if(j>=0)[ids[i],ids[j]]=[ids[j],ids[i]]}
+      let s=0;const todos=new Set([...gymHecho,...idx]);
+      for(let i=0;i<idx.length;i++){if(juegoIdx.has(idx[i]+1)&&gymDe(ids[i]).pierna)s-=10;if(todos.has(idx[i]+1))s-=3;if(idx[i]===6)s-=2;if(juegoIdx.has(idx[i]-1))s-=1;if(days[idx[i]]===hoy)s+=0.5}
+      if(s>sg){sg=s;mejorG={cmb,ids}}
+    }
+    if(mejorG)mejorG.cmb.forEach((k,i)=>{out[k]={tipos:["gym"],g:mejorG.ids[i]};last=mejorG.ids[i]});
+    for(const k of libres)if(!out[k])out[k]={tipos:["rest"]};
+  }
+  return SUG=out;
+}
+
+function rHead(){
+  const f=F(),s=semana(new Date());
+  const SG=sug();const juego=k=>{const L=(dia(k).plan||[]).concat((SG[k]||{}).tipos||[]);return L.includes("partido")||L.includes("arco")};
+  const prox=Object.keys(SG).concat(Object.keys(S.dias)).filter(k=>k>HOY()&&!(dia(k).a||[]).length&&juego(k)).sort()[0];
+  document.getElementById("phase").innerHTML="F"+f.n+" // "+f.nombre+"<small>"+(s>=1?"Semana "+s+(s%5===0?" · descarga, mitad del volumen":s<=2&&f.n===1?" · al 70% de tus cargas":""):"Parte el lunes "+fmt(ini()))+(prox?" · próximo juego: "+(prox===iso(add(new Date(),1))?"mañana":DIA[parse(prox).getDay()]+" "+fmt(parse(prox))):"")+"</small>";
+  const lun=monday(new Date()),c=conteo(lun);
+  const colors={gym:"var(--cyan)",cancha:"var(--yellow)",arco:"var(--pink)",partido:"var(--yellow)"};
+  document.getElementById("quota").innerHTML=cuotaSemana(lun).map(q=>{const n=cuenta(q,c);
+    return '<div class="q'+(n>=q.n?" done":"")+'" style="--k:'+colors[q.k]+'"><div class="lbl"><span>'+esc(q.label).toUpperCase()+'</span><b>'+n+'/'+q.n+'</b></div><div class="segs">'+Array.from({length:q.n},(_,i)=>'<span class="'+(i<n?"on":"")+'"></span>').join("")+'</div>'+(q.extra?'<div class="tag">+1 juego: 2 semanas sin dolor de ingle</div>':'')+'</div>'}).join("")+
+    '<div class="q"><div class="lbl"><span>RACHA</span><b>'+racha()+'</b></div><div class="tag">semanas cumplidas</div></div>';
+}
+
+function nombreSug(s){if(!s)return"";if(s.tipos[0]==="gym")return gymDe(s.g).nombre;return TIPOS[s.tipos[0]].label}
+function detalleSug(s,d){
+  const t=s.tipos[0];
+  if(t==="gym"){const g=gymDe(s.g);return '<ul class="list">'+items(g.items)+'</ul><p class="small muted">'+esc(F().rpe)+'. Pesos en fierros.</p>'}
+  if(t==="rest")return '<p>Descansa o camina 30 min. Recuperar también es entrenar.</p>';
+  return '<ul class="list">'+(S.muneca.alta?ARCO_SESION.slice(0,1):CANCHA_SIN_ALTA).map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul>';
+}
+function botones(L,campo,sub){
+  return '<div class="acts">'+Object.entries(TIPOS).map(([t,v])=>'<button class="act '+v.cls+'" data-act="tipo" data-f="'+campo+'" data-t="'+t+'" aria-pressed="'+L.includes(t)+'"><b>'+v.label+'</b><span>'+esc(sub(t,v))+'</span></button>').join("")+'</div>';
+}
+
+function rDay(){
+  const k=sel,d=parse(k),r=dia(k),hoy=HOY(),fut=k>hoy,esHoy=k===hoy,a=r.a||[],SG=sug(),sg=SG[k];
+  const manana=iso(add(new Date(),1));
+  const titulo=esHoy?"Hoy":k===iso(add(new Date(),-1))?"Ayer":k===manana?"Mañana":DIA[d.getDay()];
+  const alerts=[];let body="";
+  const sigJuego=(()=>{const n=iso(add(d,1));const L=(dia(n).a||[]).concat(dia(n).plan||[]).concat((SG[n]||{}).tipos||[]);return L.includes("partido")||L.includes("arco")})();
+  if(!fut&&a.length){
+    body+=botones(a,"a",(t,v)=>t==="gym"?(a.includes("gym")?"Hecho: "+((gymDe(r.g)||{}).nombre||""):"Toca "+siguienteGym().nombre):(v.sub||""));
+    if(a.includes("gym")){const g=gymDe(r.g)||siguienteGym();
+      if(g.pierna&&sigJuego)alerts.push('<div class="alert a-warn"><b>Mañana juegas</b><span>Esta sesión es de pierna pesada. Si aún no la haces, cambia a '+esc((F().gym.find(x=>!x.pierna)||{}).nombre||"tren superior")+'.</span></div>');
+      body+='<div class="chips">'+F().gym.map(x=>'<button class="chip" data-act="gsel" data-g="'+x.id+'" aria-pressed="'+(x.id===g.id)+'">'+esc(x.nombre)+'</button>').join("")+'</div><ul class="list">'+items(g.items)+'</ul>'}
+    if(a.includes("arco")||a.includes("partido")){
+      const nJ=Object.entries(S.dias).filter(([x,v])=>x<=k&&(v.a||[]).some(t=>t==="arco"||t==="partido")).length;
+      alerts.push('<div class="alert a-ok"><b>Volviste a la cancha</b><span>Juego número '+nJ+' desde que volviste. Anota una cosa que hiciste bien.</span></div>');
+      if(!S.muneca.alta)alerts.push('<div class="alert a-warn"><b>Muñeca sin alta</b><span>Mañana califica cómo amaneció la muñeca.</span></div>');
+      if(a.includes("partido")){const p=r.p||{};
+        body+='<details class="inner"'+(r.p?" open":"")+'><summary>Anotar el partido (opcional)</summary><form id="pform" class="form">'+
+         '<div class="f"><label for="p_rem">Remates al arco</label><input id="p_rem" name="remates" type="number" min="0" inputmode="numeric" value="'+esc(p.remates)+'"></div>'+
+         '<div class="f"><label for="p_at">Atajadas</label><input id="p_at" name="atajadas" type="number" min="0" inputmode="numeric" value="'+esc(p.atajadas)+'"></div>'+
+         '<div class="f"><label for="p_err">Errores a gol</label><input id="p_err" name="errores" type="number" min="0" inputmode="numeric" value="'+esc(p.errores)+'"></div>'+
+         '<div class="f full"><label for="p_b">Algo que hice bien</label><input id="p_b" name="bien" type="text" value="'+esc(p.bien)+'"></div>'+
+         '<div class="f full"><label for="p_e">Error a trabajar esta semana</label><input id="p_e" name="error" type="text" value="'+esc(p.error)+'" placeholder="Ej: me caí antes en el 1 contra 1"></div>'+
+         '<div class="full"><button class="btn sm" type="submit">Guardar partido</button></div></form></details>'}
+    }
+  }else if(!fut){
+    if(esHoy&&sg){
+      body+='<div class="sugg" style="--k:'+(sg.tipos[0]==="gym"?"var(--cyan)":sg.tipos[0]==="rest"?"var(--muted)":"var(--yellow)")+'"><div class="tag">Hoy toca</div><div class="sname">'+esc(nombreSug(sg))+'</div>'+detalleSug(sg,d)+
+        '<div class="row"><button class="btn" data-act="aplicar">Listo, lo hice</button></div></div>'+
+        '<details class="inner"><summary>Hice otra cosa</summary>'+botones(a,"a",(t,v)=>v.sub||"")+'</details>';
+    }else body+='<p class="small muted">¿Qué hiciste este día?</p>'+botones(a,"a",(t,v)=>v.sub||"");
+  }else{
+    const pl=r.plan||[];
+    if(pl.length)body+='<div class="sugg" style="--k:var(--yellow)"><div class="tag">Planeaste</div><div class="sname">'+pl.map(t=>TIPOS[t].label).join(" + ")+'</div></div>';
+    else if(sg)body+='<div class="sugg" style="--k:'+(sg.tipos[0]==="gym"?"var(--cyan)":sg.tipos[0]==="rest"?"var(--muted)":"var(--yellow)")+'"><div class="tag">Sugerido</div><div class="sname">'+esc(nombreSug(sg))+'</div>'+detalleSug(sg,d)+'</div>';
+    body+='<details class="inner"><summary>Cambiar el plan de este día</summary><p class="small muted">Marca lo que harás. El resto de la semana se reacomoda solo.</p>'+botones(pl,"plan",()=>"Planear")+'</details>';
+  }
+  if(sigJuego&&k>=hoy&&!a.some(t=>t==="arco"||t==="partido"))alerts.push('<div class="alert a-info"><b>Mañana juegas</b><span>Deja hoy el bolso listo: guantes, rodilleras, vendaje y agua. Avísale a alguien que vas.</span></div>');
+  const ultP=partidos().filter(p=>p.fecha<=k&&p.error).pop();
+  if(ultP&&!fut)alerts.push('<div class="alert a-info"><b>Foco de la semana</b><span>'+esc(ultP.error)+'</span></div>');
+  if(dolorMax(k)>3)alerts.push('<div class="alert a-bad"><b>Dolor molesto o fuerte</b><span>Para lo que lo provoca y agenda kine. Si es ingle, baja Copenhague y bloqueos esta semana.</span></div>');
+  const dol=r.d||{};
+  const pain=fut?"":'<details class="inner"'+(esHoy||r.d?" open":"")+'><summary>¿Cómo está el cuerpo?</summary><p class="small muted">Califica al despertar o antes de entrenar. Haz la prueba de cada zona y elige la opción que más se parece.</p><div class="pain">'+
+    ZONAS.map(([z,n])=>{const v=nivel(dol[z]);return '<div class="pz"><div><b>'+n+'</b> <span class="small muted">'+esc(PRUEBA[z])+'</span></div><div class="lv">'+NIVELES.map(([val,lab,desc])=>'<button class="lvb l'+val+'" data-act="nivel" data-z="'+z+'" data-v="'+val+'" aria-pressed="'+(v===val)+'" title="'+esc(desc)+'"><b>'+lab+'</b><span>'+esc(desc)+'</span></button>').join("")+'</div></div>'}).join("")+'</div></details>';
+  document.getElementById("day").innerHTML=
+    '<div class="dayhead"><h2>'+esc(titulo)+'</h2><span class="tag">'+DIA[d.getDay()].slice(0,3)+' '+fmt(d)+(esHoy?"":' · <button class="btn ghost sm" data-act="hoy">Ir a hoy</button>')+'</span></div>'+
+    alerts.filter(x=>x.includes("a-bad")||x.includes("a-warn")).join("")+body+alerts.filter(x=>!(x.includes("a-bad")||x.includes("a-warn"))).join("")+pain;
+}
+
+function rCal(){
+  const old=document.querySelector(".calscroll"); if(old)calScroll=old.scrollLeft;
+  const start=monday(parse("2026-09-28")), end=parse("2027-12-31"), hoy=HOY(), SG=sug();
+  const iniF={};for(const [n,s] of Object.entries(S.faseInicio))iniF[iso(monday(parse(s)))]="F"+n;
+  const col=L=>L.includes("partido")?"var(--yellow)":L.includes("arco")?"var(--pink)":L.includes("gym")?"var(--cyan)":"";
+  let html="";
+  for(let m=start;m<=end;m=add(m,7)){
+    let lab="",ph=false;
+    if(iniF[iso(m)]){lab=iniF[iso(m)];ph=true}else if(m.getDate()<=7){lab=MES[m.getMonth()]}
+    html+='<span class="m'+(ph?" ph":"")+'">'+lab+'</span>';
+    for(let i=0;i<7;i++){const d=add(m,i),k=iso(d),a=dia(k).a||[];
+      const g=a.includes("gym"),c=a.includes("partido")||a.includes("arco");
+      let cls=g&&c?"combo":g?"gym":a.includes("partido")?"cancha":a.includes("arco")?"arco":a.includes("rest")?"rest":"";let st="";let lbl=a.map(t=>TIPOS[t].label).join(", ");
+      const pl=dia(k).plan||[];
+      if(!a.length&&pl.length&&col(pl)){cls+=" pl";st=col(pl);lbl="planeado: "+pl.map(t=>TIPOS[t].label).join(", ")}
+      else if(!a.length&&SG[k]&&col(SG[k].tipos)){cls+=" sg";st=col(SG[k].tipos);lbl="sugerido: "+nombreSug(SG[k])}
+      if(dolorMax(k)>3)cls+=" pain"; if(k>hoy)cls+=" fut"; if(k===hoy)cls+=" today"; if(k===sel)cls+=" sel";
+      html+='<button class="cell '+cls+'"'+(st?' style="--k:'+st+'"':'')+' data-act="dia" data-k="'+k+'" title="'+fmt(d)+(lbl?": "+esc(lbl):"")+'" aria-label="'+fmt(d)+(lbl?": "+esc(lbl):"")+'"></button>'}
+  }
+  const DL=["L","M","X","J","V","S","D"];
+  document.getElementById("cal").innerHTML='<div class="spread"><h3>Tu año</h3><span class="tag">toca un día para verlo</span></div>'+
+    '<div class="calwrap"><div class="daylabels dl"><span></span><span>L</span><span></span><span>X</span><span></span><span>V</span><span></span><span>D</span></div>'+
+    '<div class="calscroll"><div class="calgrid">'+html+'</div></div></div>'+
+    '<div class="legend"><span><i style="background:var(--cyan)"></i>gimnasio</span><span><i style="background:var(--pink)"></i>arco</span><span><i style="background:var(--yellow)"></i>partido</span><span><i style="background:linear-gradient(135deg,var(--cyan) 50%,var(--yellow) 50%)"></i>gym + cancha</span><span><i style="background:var(--c-rest)"></i>descanso</span><span><i style="box-shadow:inset 0 0 0 1px var(--yellow)"></i>sugerido</span><span><i style="box-shadow:inset 0 0 0 2px var(--yellow)"></i>planeado</span><span><i style="border:2px solid var(--red)"></i>dolor molesto o más</span></div>'+
+    '<div class="row"><span class="tag">Días que puedo jugar</span><div class="chips">'+DL.map((x,i)=>'<button class="chip" data-act="dj" data-i="'+i+'" aria-pressed="'+S.diasJuego.includes(i)+'">'+x+'</button>').join("")+'</div></div>';
+  const sc=document.querySelector(".calscroll");
+  if(calScroll!=null)sc.scrollLeft=calScroll;else{const t=sc.querySelector(".today");if(t)sc.scrollLeft=Math.max(0,t.offsetLeft-sc.clientWidth*0.6)}
+}
+
+function spark(v){if(v.length<2)return"";const w=200,h=34,p=4,mn=Math.min(...v),mx=Math.max(...v),rg=mx-mn||1;
+  const pts=v.map((x,i)=>[p+i*(w-2*p)/(v.length-1),h-p-(x-mn)/rg*(h-2*p)]);const l=pts[pts.length-1];
+  return '<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:34px" preserveAspectRatio="none" aria-hidden="true"><path d="'+pts.map((q,i)=>(i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1)).join(" ")+'" fill="none" stroke="var(--cyan)" stroke-width="2" vector-effect="non-scaling-stroke"/><circle cx="'+l[0]+'" cy="'+l[1]+'" r="3" fill="var(--yellow)"/></svg>'}
+
+function rSecs(){
+  const open=[...document.querySelectorAll("details.sec[open]")].map(x=>x.id);
+  const f=F();
+  const crit=f.criterios.map(c=>{const m=met(c);return '<div class="crit'+(m?" met":"")+'"><i>'+(m?"✓":"")+'</i><div>'+esc(c.txt)+(detalle(c)?'<div class="small muted">'+esc(detalle(c))+'</div>':'')+
+    (c.manual?'<label class="row small" style="margin-top:4px"><input type="checkbox" class="chk" data-act="manual" data-id="'+c.id+'" '+(S.manual[c.id]?"checked":"")+'> Lo logré</label>':'')+'</div></div>'}).join("");
+  const todas=f.criterios.every(met);
+  const fase='<div class="small muted">'+esc(f.rango)+' · '+esc(f.rpe)+'</div>'+crit+
+    (f.n<4?'<div class="row"><button class="btn'+(todas?"":" ghost")+'" data-act="avanzar">Pasar a fase '+(f.n+1)+'</button>'+(todas?"":'<span class="small muted">Te faltan criterios. Quedarte en esta fase está bien.</span>')+'</div>':'')+
+    (f.n>1?'<button class="btn ghost sm" data-act="atras">Volver a fase '+(f.n-1)+'</button>':'')+
+    '<div class="f" style="max-width:200px"><label for="fini">Inicio de la fase (lunes)</label><input type="date" id="fini" data-act="fini" value="'+esc(S.faseInicio[String(f.n)]||"")+'"></div>'+
+    (f.n<=2?'<div class="tw"><table><thead><tr><th>Ejercicio</th><th>Semana 1</th><th>Meta dic</th></tr></thead><tbody>'+CARGAS.map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>':'');
+  const ingle=((dia(HOY()).d||{}).ingle||0)>0||((dia(iso(add(new Date(),-1))).d||{}).ingle||0)>0;
+  const ult=S.copen.subidas[S.copen.subidas.length-1];const desde=ult?diff(parse(ult),new Date()):99;
+  const puede=!ingle&&desde>=7;
+  const cuerpo=(S.muneca.alta?'<div class="alert a-ok"><b>Muñeca con alta</b><span>Desde el '+fmt(parse(S.muneca.fecha))+'. Vuelve a atajar de a poco.</span></div><div><button class="btn ghost sm" data-act="altaOff">Deshacer alta</button></div>':
+    '<div class="alert a-warn"><b>Muñeca sin alta</b><span>Gimnasio con agarre neutro y planchas sobre antebrazo. Si el dolor sube después de jugar o no baja en 2 semanas, adelanta la hora.</span></div><div><button class="btn" data-act="altaOn">El médico me dio el alta</button></div>')+
+    '<div class="spread"><div><div class="tag">Copenhague corta</div><div style="font-size:1.4rem;font-weight:700">3 x '+S.copen.seg+' s por lado</div><div class="small muted">'+(ingle?"Molestia de ingle reciente: no subas.":desde<7?"Subiste hace "+desde+" días.":"Sin dolor de ingle: puedes subir.")+'</div></div><button class="btn sm" data-act="copen" '+(puede?"":"disabled")+'>+5 s</button></div>'+
+    '<label class="row small"><input type="checkbox" class="chk" data-act="kine" '+(S.kineIngle?"checked":"")+'> El kine ya revisó mi ingle (habilita Copenhague y 5-10-5 en tests)</label>';
+  const t=T(),lock=!S.kineIngle;
+  const M=[["salto","Salto","cm",1],["rm","Sentadilla 1RM est.","kg",1],["copen","Copenhague","s",1],["agil","5-10-5","s",-1]];
+  const stats='<div class="stats">'+M.map(([k,n,u,dir])=>{const s=serie(k),b=s[0],l=s[s.length-1];let dl="";if(s.length>1){const g=dir*(l-b)>0;dl='<span class="d '+(g?"up":"down")+'">'+(l-b>0?"+":"")+(l-b).toFixed(k==="agil"?2:1)+" "+u+" vs partida</span>"}
+    return '<div class="stat"><span class="tag">'+n+'</span><span class="v">'+(l!=null?(k==="rm"?l.toFixed(0):l)+' <span class="small muted">'+u+'</span>':"—")+'</span>'+dl+spark(s)+'</div>'}).join("")+'</div>';
+  const prox=t.length?(()=>{const a=add(parse(t[t.length-1].fecha),42),b=add(parse(t[t.length-1].fecha),56);return '<p class="small muted">Próximo test entre el '+fmt(a)+' y el '+fmt(b)+'.</p>'})():'<div class="alert a-warn"><b>Falta tu punto de partida</b><span>Hazlo esta semana: salto vertical y sentadilla.</span></div>';
+  const tests=prox+stats+'<form id="tform" class="form">'+
+    '<div class="f"><label for="t_f">Fecha</label><input id="t_f" name="fecha" type="date" value="'+HOY()+'" required></div>'+
+    '<div class="f"><label for="t_s">Salto cm</label><input id="t_s" name="salto" type="number" step="0.1" inputmode="decimal"></div>'+
+    '<div class="f"><label for="t_k">Sentadilla kg</label><input id="t_k" name="sentKg" type="number" step="0.5" inputmode="decimal"></div>'+
+    '<div class="f"><label for="t_r">Reps (3 a 5)</label><input id="t_r" name="sentReps" type="number" inputmode="numeric"></div>'+
+    '<div class="f"><label for="t_c">Copenhague s</label><input id="t_c" name="copen" type="number" '+(lock?"disabled":"")+'></div>'+
+    '<div class="f"><label for="t_a">5-10-5 s</label><input id="t_a" name="agil" type="number" step="0.01" '+(lock?"disabled":"")+'></div>'+
+    '<div class="full"><button class="btn sm" type="submit">Guardar test</button></div></form>'+
+    (t.length?'<div class="tw"><table><thead><tr><th>Fecha</th><th>Salto</th><th>Sentadilla</th><th>Copen.</th><th>5-10-5</th><th></th></tr></thead><tbody>'+t.slice().reverse().map(x=>'<tr><td>'+fmt(parse(x.fecha))+'</td><td>'+esc(x.salto||"—")+'</td><td>'+(x.sentKg?esc(x.sentKg)+" x "+esc(x.sentReps):"—")+'</td><td>'+esc(x.copen||"—")+'</td><td>'+esc(x.agil||"—")+'</td><td><button class="btn ghost sm" data-act="delT" data-id="'+esc(x.id)+'">Borrar</button></td></tr>').join("")+'</tbody></table></div>':'');
+  const P=partidos();const rem=P.reduce((s,x)=>s+(+x.remates||0),0),at=P.reduce((s,x)=>s+(+x.atajadas||0),0);const u5=P.slice(-5);
+  const part='<div class="stats"><div class="stat"><span class="tag">% atajadas</span><span class="v">'+(rem?Math.round(at/rem*100)+"%":"—")+'</span><span class="d">meta F3: sobre 70%</span>'+spark(P.filter(x=>+x.remates).map(x=>x.atajadas/x.remates*100))+'</div>'+
+    '<div class="stat"><span class="tag">Errores a gol</span><span class="v">'+(u5.length?(u5.reduce((s,x)=>s+(+x.errores||0),0)/u5.length).toFixed(1):"—")+'</span><span class="d">promedio últimos 5, meta 0</span>'+spark(P.map(x=>+x.errores||0))+'</div></div>'+
+    (P.length?'<div class="tw"><table><thead><tr><th>Fecha</th><th>Atajadas</th><th>Err.</th><th>A trabajar</th></tr></thead><tbody>'+P.slice().reverse().map(x=>'<tr><td>'+fmt(parse(x.fecha))+'</td><td>'+esc(x.atajadas||0)+'/'+esc(x.remates||0)+'</td><td>'+esc(x.errores||0)+'</td><td>'+esc(x.error||"")+'</td></tr>').join("")+'</tbody></table></div>':'<p class="small muted">Marca "Partido" en un día y anota remates y atajadas. Graba con el celular detrás del arco.</p>');
+  const all=PENDIENTES.flatMap(g=>g.items),hechos=all.filter(i=>S.pendientes[i.id]).length;
+  const pend=PENDIENTES.map(g=>'<div class="grp">'+esc(g.g)+'</div>'+g.items.map(i=>{const on=!!S.pendientes[i.id];return '<label class="todo'+(on?" done":"")+'"><input type="checkbox" data-act="pend" data-id="'+i.id+'" '+(on?"checked":"")+'><span><span class="tt">'+esc(i.t)+'</span>'+(i.d?'<br><span class="small muted">'+esc(i.d)+'</span>':'')+'</span></label>'}).join("")).join("");
+  const ok=f.criterios.filter(met).length;
+  const sec=(id,t,meta,b)=>'<details class="sec" id="'+id+'"'+(open.includes(id)?" open":"")+'><summary><h3>'+t+'</h3><span class="tag" style="margin-left:auto">'+meta+'</span></summary><div class="secbody">'+b+'</div></details>';
+  document.getElementById("secs").innerHTML=
+    sec("s-fase","Pasar de fase",ok+"/"+f.criterios.length,fase)+
+    sec("s-cuerpo","Muñeca e ingle",S.muneca.alta?"con alta":"sin alta",cuerpo)+
+    sec("s-tests","Tests",t.length+" hechos",tests)+
+    sec("s-part","Partidos",P.length+" anotados",part)+
+    sec("s-pend","Pendientes",hechos+"/"+all.length,pend);
+}
+
+function render(){SUG=null;rHead();rDay();rCal();rSecs()}
+
+/* ---------- Eventos ---------- */
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function setDia(k,fn){const r=S.dias[k]=S.dias[k]||{};fn(r);if(r.a&&!r.a.length)delete r.a;if(r.plan&&!r.plan.length)delete r.plan;if(!Object.keys(r).length)delete S.dias[k];save();render()}
+document.addEventListener("click",e=>{
+  const el=e.target.closest("[data-act]");if(!el)return;const a=el.dataset.act;
+  if(a==="nivel"){setDia(sel,r=>{r.d=r.d||{};r.d[el.dataset.z]=+el.dataset.v});return}
+  if(a==="aplicar"){const sg=sug()[sel];if(sg)setDia(sel,r=>{r.a=sg.tipos.slice();if(sg.g)r.g=sg.g});return}
+  if(a==="dj"){const i=+el.dataset.i;const L=S.diasJuego;const j=L.indexOf(i);if(j>=0)L.splice(j,1);else L.push(i);save();render();return}
+  if(a==="tipo"){const t=el.dataset.t,f=el.dataset.f||(sel>HOY()?"plan":"a");setDia(sel,r=>{r[f]=r[f]||[];const L=r[f];const i=L.indexOf(t);
+    if(i>=0){L.splice(i,1);if(f==="a"&&t==="gym")delete r.g;if(f==="a"&&t==="partido")delete r.p}
+    else{if(t==="rest"){r[f]=[];if(f==="a"){delete r.g;delete r.p}}else r[f]=L.filter(x=>x!=="rest");r[f].push(t);if(t==="gym")r.g=r.g||siguienteGym().id}});return}
+  if(a==="gsel"){setDia(sel,r=>{r.g=el.dataset.g});return}
+  if(a==="dia"){sel=el.dataset.k;rDay();rCal();document.getElementById("day").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});return}
+  if(a==="hoy"){sel=HOY();render();return}
+  if(a==="altaOn"){S.muneca={alta:true,fecha:HOY()};S.pendientes.medico=S.pendientes.medico||HOY();save();render();return}
+  if(a==="altaOff"){S.muneca={alta:false,fecha:null};save();render();return}
+  if(a==="copen"){S.copen.seg+=5;S.copen.subidas.push(HOY());save();render();return}
+  if(a==="avanzar"){const n=S.fase+1;S.fase=n;const d=new Date();S.faseInicio[String(n)]=iso(d.getDay()===1?d:add(monday(d),7));save();render();return}
+  if(a==="atras"){S.fase--;save();render();return}
+  if(a==="delT"){S.tests=S.tests.filter(x=>x.id!==el.dataset.id);save();render();return}
+});
+document.addEventListener("change",e=>{
+  const el=e.target,a=el.dataset&&el.dataset.act;if(!a)return;
+  if(a==="dolor"){setDia(sel,r=>{r.d=r.d||{};r.d[el.dataset.z]=+el.value});return}
+  if(a==="pend"){if(el.checked)S.pendientes[el.dataset.id]=HOY();else delete S.pendientes[el.dataset.id];save();render();return}
+  if(a==="manual"){if(el.checked)S.manual[el.dataset.id]=true;else delete S.manual[el.dataset.id];save();render();return}
+  if(a==="kine"){S.kineIngle=el.checked;if(el.checked)S.pendientes.kine=S.pendientes.kine||HOY();save();render();return}
+  if(a==="fini"&&el.value){S.faseInicio[String(S.fase)]=iso(monday(parse(el.value)));save();render();return}
+});
+document.addEventListener("input",e=>{const el=e.target;if(el.dataset&&el.dataset.act==="dolor"){const o=document.getElementById("o_"+el.dataset.z);o.textContent=el.value;o.classList.toggle("hi",+el.value>3)}});
+document.addEventListener("submit",e=>{
+  e.preventDefault();const fd=Object.fromEntries(new FormData(e.target).entries());
+  if(e.target.id==="pform"){setDia(sel,r=>{r.p=fd})}
+  if(e.target.id==="tform"){if(!fd.salto&&!fd.sentKg&&!fd.copen&&!fd.agil)return;S.tests.push(Object.assign({id:uid()},fd));S.pendientes.tests0=S.pendientes.tests0||HOY();save();render()}
+});
+boot();
+})();
+</script>
+
+</body>
+</html>

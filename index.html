@@ -161,6 +161,7 @@ th{font-family:var(--mono);font-weight:400;color:var(--muted);font-size:.72rem;t
 .todo input:checked,.chk:checked{background:var(--green);border-color:var(--green)}
 .todo input:checked::after,.chk:checked::after{content:"";width:9px;height:5px;border:2px solid #07080d;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
 .todo.done .tt{color:var(--muted);text-decoration:line-through}
+.ta{width:100%;background:var(--bg);border:1px solid var(--line);padding:8px;font-family:var(--mono);font-size:.75rem;color:var(--ink)}
 .grp{font-family:var(--mono);font-size:.75rem;color:var(--yellow);text-transform:uppercase;margin-top:6px}
 footer{font-size:.8rem;color:var(--muted);display:grid;gap:4px}
 @media (prefers-reduced-motion:no-preference){
@@ -304,29 +305,95 @@ function normal(x){
 function lsLoad(){try{const r=localStorage.getItem(LS);return r?JSON.parse(r):null}catch(e){return null}}
 function lsSave(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
 function sync(st,t){document.getElementById("sync").innerHTML='<i class="'+st+'"></i><span>'+t+'</span>'}
-function save(){
+// soloDatos: el cambio fue en un día o un test, que llevan su propia marca de tiempo (u).
+// Si no, cambió la configuración (fase, muñeca, pendientes…) y se marca S.cu.
+function save(soloDatos){
+  if(!soloDatos)S.cu=Date.now();
+  persist(); queueGist();
+}
+function persist(){
   S.actualizado=new Date().toISOString(); lsSave(); dirty=true; clearTimeout(timer);
-  if(!docRef){sync("warn","Solo en este dispositivo");return}
+  if(!docRef){syncBadge();return}
   sync("","Guardando…");
   timer=setTimeout(()=>{chain=chain.then(async()=>{if(!dirty)return;dirty=false;
-    try{await docRef.set(clone(S));sync("ok","Guardado")}catch(e){dirty=true;sync("warn","Sin nube ("+(e&&e.code||"error")+")")}})},600);
+    try{const o=clone(S);delete o.sync;await docRef.set(o);sync("ok","Guardado")}catch(e){dirty=true;sync("warn","Sin nube ("+(e&&e.code||"error")+")")}})},600);
+}
+
+/* ---------- Respaldo y sincronización opcional con Gist (como en Fierro) ---------- */
+const GFILE="futsal.json";let syncing=false,again=false,gistTimer=null;
+const CFG=["fase","faseInicio","muneca","kineIngle","copen","pendientes","manual","diasJuego"];
+// Lo que leen otras apps (Protocolo): una entrada por día con algo hecho. No cambiar esta forma.
+function resumenDias(){const out={};for(const k of Object.keys(S.dias).sort()){const a=S.dias[k].a||[];
+  const r={partido:a.includes("partido"),sesion_arquero:a.includes("arco"),gym:a.includes("gym")};
+  if(r.partido||r.sesion_arquero||r.gym)out[k]=r}return out}
+function payload(){const config={};for(const k of CFG)config[k]=S[k];
+  return JSON.stringify({version_esquema:1,app:"bitacora-arquero",resumen_dias:resumenDias(),config,cu:S.cu||0,dias:S.dias,tests:S.tests},null,1)}
+function mergeById(a,b){const m=new Map((a||[]).map(x=>[x.id,x]));(b||[]).forEach(r=>{const l=m.get(r.id);if(!l||(r.u||0)>(l.u||0))m.set(r.id,r)});return[...m.values()]}
+// Acepta futsal.json o el estado interno guardado por el artifact.
+function mergeRemote(R){
+  const n=R.version_esquema?null:normal(R);
+  const dias=n?n.dias:(R.dias||{}), tests=n?n.tests:(R.tests||[]), cfg=n||R.config||{};
+  const rcu=R.cu||(n&&Date.parse(R.actualizado))||0;
+  for(const [k,r] of Object.entries(dias)){const l=S.dias[k];if(!l||(r.u||0)>(l.u||0))S.dias[k]=r}
+  S.tests=mergeById(S.tests,tests);
+  if(!S.cu||rcu>S.cu){for(const k of CFG)if(cfg[k]!==undefined)S[k]=cfg[k];S.cu=rcu||S.cu}
+}
+function syncBadge(t){
+  if(docRef&&!t)return;
+  const g=S.sync||{};
+  if(t){sync("",t);return}
+  if(!g.token){sync("warn","Solo en este dispositivo");return}
+  if(!navigator.onLine){sync("warn","Sin internet, guardado aquí");return}
+  if(g.error){sync("warn",g.error);return}
+  sync(g.lastSync?"ok":"warn",g.lastSync?"Sincronizado "+new Date(g.lastSync).toLocaleString("es-CL",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"Sin sincronizar");
+}
+async function gh(path,opt={}){const r=await fetch("https://api.github.com"+path,{...opt,headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+S.sync.token,...(opt.body?{"Content-Type":"application/json"}:{})}});
+  if(!r.ok){throw new Error(r.status===401?"Token inválido o vencido":r.status===404?"No encontré el Gist (revisa el ID y el permiso gist)":"GitHub respondió "+r.status)}return r.json()}
+async function gistSync(verbose){
+  const g=S.sync=S.sync||{};
+  if(!g.token){if(verbose)note("Falta el token de GitHub");return}
+  if(!navigator.onLine){syncBadge();if(verbose)note("Sin internet. Tus datos quedan guardados aquí y se suben al volver la conexión.");return}
+  if(syncing){again=true;return}syncing=true;syncBadge("Sincronizando…");
+  const antes=payload();
+  try{
+    if(!g.gist){const r=await gh("/gists",{method:"POST",body:JSON.stringify({description:"Bitácora del Arquero — datos de futsal",public:false,files:{[GFILE]:{content:payload()}}})});g.gist=r.id}
+    else{const r=await gh("/gists/"+g.gist);const f=r.files&&r.files[GFILE];if(f){let c=f.content;if(f.truncated)c=await(await fetch(f.raw_url)).text();mergeRemote(JSON.parse(c))}
+      await gh("/gists/"+g.gist,{method:"PATCH",body:JSON.stringify({files:{[GFILE]:{content:payload()}}})})}
+    g.lastSync=Date.now();delete g.error;if(verbose)note("Sincronizado");
+  }catch(e){g.error=e.message||"Error al sincronizar";if(verbose)note(g.error)}
+  finally{syncing=false;lsSave();if(again){again=false;queueGist()}if(payload()!==antes){persist();render()}else{syncBadge();if(verbose)rSecs()}}
+}
+function queueGist(){if(!S.sync||!S.sync.token)return;clearTimeout(gistTimer);gistTimer=setTimeout(()=>gistSync(false),1500)}
+function note(t){const el=document.getElementById("ajNote");if(el)el.textContent=t}
+function exportar(){
+  const txt=payload(),name="bitacora-arquero-"+HOY()+".json";
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}catch(e){}
+  const ta=document.getElementById("ajJson");ta.value=txt;ta.hidden=false;
+  const done=()=>note("Respaldo listo. Si no se descargó, quedó copiado: pégalo en un archivo o en Importar.");
+  try{navigator.clipboard.writeText(txt).then(done,()=>{ta.select();note("Respaldo listo: copia el texto de abajo.")})}catch(e){ta.select();note("Respaldo listo: copia el texto de abajo.")}
+}
+function importar(txt){
+  let R;try{R=JSON.parse(txt)}catch(e){note("Ese texto no es un respaldo válido (JSON).");return}
+  if(!R||typeof R!=="object"||!(R.dias||R.version_esquema)){note("Ese JSON no es un respaldo de la Bitácora.");return}
+  mergeRemote(R);persist();queueGist();render();note("Respaldo importado y combinado con lo que ya tenías.");
 }
 async function boot(){
   const local=lsLoad(); if(local)S=normal(local);
   render();
+  window.addEventListener("online",()=>gistSync(false));window.addEventListener("offline",()=>syncBadge());
   let db=null; try{db=window.claude&&window.claude.use?await window.claude.use("db"):null}catch(e){}
-  if(!db){sync("warn","Solo en este dispositivo");return}
+  if(!db){syncBadge();gistSync(false);return}
   docRef=db.doc("estado/principal");
   try{
     const snap=await docRef.get();
     if(snap.exists){const r=snap.data()||{};
-      if(!local||(r.actualizado||"")>=(local.actualizado||"")){S=normal(r);lsSave();if(r.v!==2)save()}else save();
+      if(!local||(r.actualizado||"")>=(local.actualizado||"")){const g=S.sync;S=normal(r);S.sync=g;lsSave();if(r.v!==2)persist()}else persist();
     }else save();
     if(!dirty)sync("ok","Guardado"); render();
   }catch(e){sync("warn","Sin nube, guardando aquí")}
   document.addEventListener("visibilitychange",async()=>{
     if(document.visibilityState!=="visible"||!docRef||dirty)return;
-    try{const s=await docRef.get();if(s.exists){const r=s.data()||{};if((r.actualizado||"")>(S.actualizado||"")){S=normal(r);lsSave();render()}}}catch(e){}
+    try{const s=await docRef.get();if(s.exists){const r=s.data()||{};if((r.actualizado||"")>(S.actualizado||"")){const g=S.sync;S=normal(r);S.sync=g;lsSave();render()}}}catch(e){}
   });
 }
 
@@ -348,7 +415,7 @@ function siguienteGym(){
   return g[(i+1)%g.length];
 }
 const epley=(kg,r)=>kg*(1+r/30);
-const T=()=>[...S.tests].sort((a,b)=>a.fecha<b.fecha?-1:1);
+const T=()=>S.tests.filter(x=>!x.del).sort((a,b)=>a.fecha<b.fecha?-1:1);
 function serie(k){const t=T();if(k==="rm")return t.filter(x=>x.sentKg&&x.sentReps).map(x=>epley(+x.sentKg,+x.sentReps));return t.filter(x=>x[k]!==""&&x[k]!=null).map(x=>+x[k])}
 function partidos(){return Object.entries(S.dias).filter(([k,v])=>v.p).map(([k,v])=>Object.assign({fecha:k},v.p)).sort((a,b)=>a.fecha<b.fecha?-1:1)}
 function met(c){
@@ -586,14 +653,26 @@ function rSecs(){
     sec("s-cuerpo","Muñeca e ingle",S.muneca.alta?"con alta":"sin alta",cuerpo)+
     sec("s-tests","Tests",t.length+" hechos",tests)+
     sec("s-part","Partidos",P.length+" anotados",part)+
-    sec("s-pend","Pendientes",hechos+"/"+all.length,pend);
+    sec("s-pend","Pendientes",hechos+"/"+all.length,pend)+
+    sec("s-aj","Ajustes",(S.sync&&S.sync.token)?"gist activo":"",ajustes());
+}
+
+function ajustes(){const g=S.sync||{};
+  return '<div class="grp">Respaldo</div><p class="small muted">Para pasar tus datos del artifact a GitHub Pages: exporta allá, importa acá. Importar combina, no borra nada.</p>'+
+   '<div class="row"><button class="btn sm" data-act="exp">Exportar respaldo (JSON)</button><label class="btn ghost sm" for="ajFile">Importar archivo</label><input type="file" id="ajFile" data-act="imp" accept=".json,application/json" hidden><button class="btn ghost sm" data-act="impPaste">Importar pegando</button></div>'+
+   '<textarea id="ajJson" class="ta" hidden rows="6" spellcheck="false" aria-label="Respaldo en JSON"></textarea>'+
+   '<div class="grp">Sincronización con Gist (opcional)</div><p class="small muted">Apagada por defecto. Pega un token de GitHub con solo el permiso <b>gist</b>. El token queda solo en este dispositivo. Archivo: futsal.json.</p>'+
+   '<div class="form"><div class="f full"><label for="ajTok">Token de GitHub</label><input id="ajTok" data-act="tok" type="password" autocomplete="off" placeholder="ghp_…" value="'+esc(g.token||"")+'"></div>'+
+   '<div class="f full"><label for="ajGist">ID del Gist (vacío = se crea uno nuevo)</label><input id="ajGist" data-act="gid" autocomplete="off" value="'+esc(g.gist||"")+'"></div></div>'+
+   '<div class="row"><button class="btn ghost sm" data-act="gsync">Sincronizar ahora</button><span class="small muted">'+(g.lastSync?"Última: "+new Date(g.lastSync).toLocaleString("es-CL"):"Sin sincronizar")+'</span></div>'+
+   '<p class="small" id="ajNote" role="status"></p>';
 }
 
 function render(){SUG=null;rHead();rDay();rCal();rSecs()}
 
 /* ---------- Eventos ---------- */
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-function setDia(k,fn){const r=S.dias[k]=S.dias[k]||{};fn(r);if(r.a&&!r.a.length)delete r.a;if(r.plan&&!r.plan.length)delete r.plan;if(!Object.keys(r).length)delete S.dias[k];save();render()}
+function setDia(k,fn){const r=S.dias[k]=S.dias[k]||{};fn(r);if(r.a&&!r.a.length)delete r.a;if(r.plan&&!r.plan.length)delete r.plan;r.u=Date.now();save(true);render()}
 document.addEventListener("click",e=>{
   const el=e.target.closest("[data-act]");if(!el)return;const a=el.dataset.act;
   if(a==="nivel"){setDia(sel,r=>{r.d=r.d||{};r.d[el.dataset.z]=+el.dataset.v});return}
@@ -610,7 +689,10 @@ document.addEventListener("click",e=>{
   if(a==="copen"){S.copen.seg+=5;S.copen.subidas.push(HOY());save();render();return}
   if(a==="avanzar"){const n=S.fase+1;S.fase=n;const d=new Date();S.faseInicio[String(n)]=iso(d.getDay()===1?d:add(monday(d),7));save();render();return}
   if(a==="atras"){S.fase--;save();render();return}
-  if(a==="delT"){S.tests=S.tests.filter(x=>x.id!==el.dataset.id);save();render();return}
+  if(a==="delT"){const x=S.tests.find(y=>y.id===el.dataset.id);if(x){x.del=1;x.u=Date.now()}save(true);render();return}
+  if(a==="exp"){exportar();return}
+  if(a==="impPaste"){const ta=document.getElementById("ajJson");if(ta.hidden||!ta.value.trim()){ta.hidden=false;ta.value="";ta.focus();note("Pega el respaldo en el cuadro y vuelve a tocar Importar.");return}importar(ta.value);return}
+  if(a==="gsync"){S.sync=S.sync||{};S.sync.token=document.getElementById("ajTok").value.trim();S.sync.gist=document.getElementById("ajGist").value.trim();lsSave();gistSync(true);return}
 });
 document.addEventListener("change",e=>{
   const el=e.target,a=el.dataset&&el.dataset.act;if(!a)return;
@@ -618,13 +700,15 @@ document.addEventListener("change",e=>{
   if(a==="pend"){if(el.checked)S.pendientes[el.dataset.id]=HOY();else delete S.pendientes[el.dataset.id];save();render();return}
   if(a==="manual"){if(el.checked)S.manual[el.dataset.id]=true;else delete S.manual[el.dataset.id];save();render();return}
   if(a==="kine"){S.kineIngle=el.checked;if(el.checked)S.pendientes.kine=S.pendientes.kine||HOY();save();render();return}
+  if(a==="imp"&&el.files&&el.files[0]){el.files[0].text().then(importar);el.value="";return}
+  if(a==="tok"||a==="gid"){S.sync=S.sync||{};S.sync[a==="tok"?"token":"gist"]=el.value.trim();lsSave();syncBadge();return}
   if(a==="fini"&&el.value){S.faseInicio[String(S.fase)]=iso(monday(parse(el.value)));save();render();return}
 });
 document.addEventListener("input",e=>{const el=e.target;if(el.dataset&&el.dataset.act==="dolor"){const o=document.getElementById("o_"+el.dataset.z);o.textContent=el.value;o.classList.toggle("hi",+el.value>3)}});
 document.addEventListener("submit",e=>{
   e.preventDefault();const fd=Object.fromEntries(new FormData(e.target).entries());
   if(e.target.id==="pform"){setDia(sel,r=>{r.p=fd})}
-  if(e.target.id==="tform"){if(!fd.salto&&!fd.sentKg&&!fd.copen&&!fd.agil)return;S.tests.push(Object.assign({id:uid()},fd));S.pendientes.tests0=S.pendientes.tests0||HOY();save();render()}
+  if(e.target.id==="tform"){if(!fd.salto&&!fd.sentKg&&!fd.copen&&!fd.agil)return;S.tests.push(Object.assign({id:uid(),u:Date.now()},fd));S.pendientes.tests0=S.pendientes.tests0||HOY();save();render()}
 });
 boot();
 })();

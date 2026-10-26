@@ -50,7 +50,7 @@ button{cursor:pointer}
 /* Cuota */
 .quota{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px}
 .q{background:var(--panel);border:1px solid var(--line);padding:10px 12px;clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,0 100%);display:grid;gap:8px}
-.q .lbl{display:flex;justify-content:space-between;gap:6px;align-items:baseline;font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.q .lbl{display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 6px;align-items:baseline;font-family:var(--mono);font-size:.8rem;color:var(--muted)}
 .q .lbl b{flex:none;font-family:var(--display);font-size:1.3rem;color:var(--ink);font-weight:700}
 .q.done .lbl b{color:var(--green)}
 .segs{display:flex;gap:4px}
@@ -73,6 +73,8 @@ button{cursor:pointer}
 .chip[aria-pressed="true"]{border-color:var(--cyan);color:var(--cyan)}
 .list{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.95rem}
 .list li.swap{color:var(--yellow)}
+.list .kg{color:var(--cyan);font-weight:700;white-space:nowrap}
+.list li.swap .kg{color:var(--yellow)}
 .list li::marker{color:var(--muted)}
 .alert{border:1px solid var(--k);background:color-mix(in srgb,var(--k) 10%,transparent);padding:10px 12px;font-size:.92rem;display:grid;gap:2px}
 .alert b{color:var(--k);text-transform:uppercase;letter-spacing:.05em;font-size:.82rem;font-family:var(--mono)}
@@ -182,7 +184,7 @@ footer{font-size:.8rem;color:var(--muted);display:grid;gap:4px}
   <div id="secs" style="display:grid;gap:10px"></div>
 
   <footer>
-    <p>Basado en tu plan “Plan arquero de futsal: de vuelta a competir”. Los pesos de cada serie van en fierros.</p>
+    <p>Basado en tu plan “Plan arquero de futsal: de vuelta a competir”. Los pesos que sugiere la app suben solos cada semana.</p>
     <p>Regla del dolor: sobre 3 de 10, si empeora en la sesión o sigue al otro día, para ese ejercicio y ve al kine.</p>
   </footer>
 </div>
@@ -213,11 +215,11 @@ const ARCO_SESION=[
 const FASES=[
  {n:1,nombre:"Retomar",rango:"oct a nov 2026",
   cuota:[{k:"gym",n:3,label:"Gimnasio"},{k:"cancha",n:1,label:"Cancha",tipos:["arco","partido"]}],
-  rpe:"RPE 6 a 7, nada al fallo",
+  rpe:"RPE 6 a 7, nada al fallo. Si las 3 series salen fáciles, súbele 2,5 kg igual",
   gym:[
-   {id:"A",nombre:"Gimnasio A",pierna:true,items:["Sentadilla goblet 3x8","Peso muerto rumano 3x8","Zancada lateral 3x8 por lado",{t:"Press con mancuernas 3x10",sinAlta:"Press en máquina agarre neutro 3x10 (si duele, sáltalo)"},{t:"Remo con mancuerna 3x10",sinAlta:"Remo en máquina agarre neutro 3x10, si no duele"},"COPEN","Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]},
-   {id:"B",nombre:"Gimnasio B",pierna:false,items:["Hip thrust 3x10","Step-up al cajón 3x8 por lado","Curl nórdico asistido 3x5",{t:"Press militar 3x8",sinAlta:"Press militar en máquina agarre neutro 3x8, o sáltalo"},{t:"Jalón o dominada asistida 3x8",sinAlta:"Jalón 3x8 solo si no duele (sin dominadas)"},"Pallof press 3x10 por lado"]},
-   {id:"C",nombre:"Gimnasio C + agilidad",pierna:true,items:["Saltos pogo 3x15","Salto a cajón bajo 3x5","Desplazamiento lateral 6x8 s","Reacción a señal 6x5 s","Sentadilla búlgara 3x8",{t:"Plancha lateral 3x30 s",sinAlta:"Plancha lateral sobre antebrazo 3x30 s"},"Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]}
+   {id:"A",nombre:"Gimnasio A",pierna:true,items:[{t:"Sentadilla con barra 3x8",kg:[60,2.5,80,"barra"]},{t:"Peso muerto rumano con barra 3x8",kg:[50,2.5,70,"barra"]},{t:"Zancada lateral con mancuernas 3x8 por lado",kg:[8,0.5,12,"c/u"]},{t:"Press con mancuernas en banco 3x10",kg:[15,0.5,22.5,"c/u"],sinAlta:{t:"Press de piso con mancuernas, agarre neutro, 3x10 (si duele, sáltalo)",kg:[10,0,10,"c/u"]}},{t:"Remo con mancuerna apoyado en banco 3x10",kg:[20,1,27.5,"c/u"],sinAlta:{t:"Remo con mancuerna apoyado, agarre neutro, 3x10 (si duele, sáltalo)",kg:[12.5,0,12.5,"c/u"]}},"COPEN","Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]},
+   {id:"B",nombre:"Gimnasio B",pierna:false,items:[{t:"Hip thrust con barra 3x10",kg:[50,2.5,80,"barra"]},{t:"Step-up al cajón con mancuernas 3x8 por lado",kg:[8,0.5,14,"c/u"]},"Curl nórdico asistido 3x5 (pies sujetos bajo una barra cargada o un compañero)",{t:"Press militar con mancuernas sentado 3x8",kg:[10,0.5,14,"c/u"],sinAlta:{t:"Press militar con mancuernas, agarre neutro, 3x8 (si duele, sáltalo)",kg:[7,0,7,"c/u"]}},{t:"Dominadas asistidas con banda 3x6",sinAlta:"Remo con mancuernas pecho apoyado en banco inclinado 3x10, 10 kg c/u, si no duele"},"Pallof press con banda 3x10 por lado (sin banda: dead bug 3x10 por lado)"]},
+   {id:"C",nombre:"Gimnasio C + agilidad",pierna:true,items:["Saltos pogo 3x15","Salto a cajón bajo 3x5","Desplazamiento lateral 6x8 s","Reacción a señal 6x5 s",{t:"Sentadilla búlgara con mancuernas 3x8",kg:[12.5,1,17.5,"c/u"]},{t:"Plancha lateral 3x30 s",sinAlta:"Plancha lateral sobre antebrazo 3x30 s"},"Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]}
   ],
   criterios:[
    {id:"f1_semanas",txt:"3 semanas seguidas cumpliendo la cuota",auto:"semanas3"},
@@ -228,9 +230,9 @@ const FASES=[
   cuota:[{k:"gym",n:3,label:"Gimnasio"},{k:"arco",n:2,label:"Arco",tipos:["arco"]},{k:"partido",n:1,label:"Partido",tipos:["partido"]}],
   rpe:"RPE 7 a 8, sube peso al completar todas las series",
   gym:[
-   {id:"FP",nombre:"Fuerza piernas",pierna:true,items:["Saltos al cajón 4x4 (antes de la fuerza)","Sentadilla trasera 4x5","Peso muerto hexagonal 3x5","Curl nórdico 3x5","COPEN"]},
-   {id:"TS",nombre:"Tren superior + core",pierna:false,items:["Press banca 4x6","Dominadas 4x6","Press militar 3x8","Remo 3x8","Balón medicinal lateral 4x5 por lado"]},
-   {id:"PA",nombre:"Potencia + agilidad",pierna:true,items:["Skater 4x5 por lado","Salto horizontal 3x3","Búlgara 3x6","Intervalos 8 x (20 s fuerte / 40 s suave)"]}
+   {id:"FP",nombre:"Fuerza piernas",pierna:true,items:["Saltos al cajón 4x4 (antes de la fuerza)",{t:"Sentadilla trasera 4x5",kg:[80,2.5,105,"barra"]},{t:"Peso muerto con barra 3x5",kg:[80,2.5,120,"barra"]},"Curl nórdico 3x5","COPEN"]},
+   {id:"TS",nombre:"Tren superior + core",pierna:false,items:[{t:"Press banca con barra 4x6",kg:[55,1.25,70,"barra"]},"Dominadas 4x6",{t:"Press militar con barra de pie 3x8",kg:[30,1.25,40,"barra"]},{t:"Remo con barra 3x8",kg:[45,1.25,60,"barra"]},"Lanzamiento lateral de balón medicinal 4x5 por lado (sin balón: rotación con disco 3x8 por lado)"]},
+   {id:"PA",nombre:"Potencia + agilidad",pierna:true,items:["Skater 4x5 por lado","Salto horizontal 3x3",{t:"Búlgara con mancuernas 3x6",kg:[15,1,22.5,"c/u"]},"Intervalos 8 x (20 s fuerte / 40 s suave)"]}
   ],
   criterios:[
    {id:"f2_sent",txt:"Sentadilla 100 kg x 5 con RIR 2",auto:"sent100",manual:true},
@@ -240,8 +242,8 @@ const FASES=[
   cuota:[{k:"gym",n:2,label:"Gimnasio"},{k:"arco",n:2,label:"Arco",tipos:["arco"]},{k:"partido",n:1,label:"Partido",tipos:["partido"]}],
   rpe:"Potencia y velocidad, poco volumen",
   gym:[
-   {id:"PP",nombre:"Potencia piernas",pierna:true,items:["Sentadilla pesada 3x3 + 4 saltos al cajón al tiro","Saltos con hexagonal liviana 4x4","Saltos en profundidad 30 cm 3x4","COPEN"]},
-   {id:"TV",nombre:"Tren superior y velocidad",pierna:false,items:["Press banca 3x5","Dominadas lastradas 3x5","Balón medicinal 4x5","Sprints de reacción 3 a 5 m, 8 reps"]}
+   {id:"PP",nombre:"Potencia piernas",pierna:true,items:[{t:"Sentadilla pesada 3x3 + 4 saltos al cajón al tiro",kg:[95,1.25,115,"barra"]},{t:"Saltos con mancuernas livianas 4x4",kg:[10,0,10,"c/u"]},"Saltos en profundidad 30 cm 3x4","COPEN"]},
+   {id:"TV",nombre:"Tren superior y velocidad",pierna:false,items:[{t:"Press banca con barra 3x5",kg:[65,1.25,77.5,"barra"]},{t:"Dominadas lastradas 3x5 (mancuerna entre los pies)",kg:[5,0.5,15,"lastre"]},"Balón medicinal 4x5","Sprints de reacción 3 a 5 m, 8 reps"]}
   ],
   criterios:[{id:"f3_club",txt:"Entrenando con un club ANFP de ascenso",manual:true}]},
  {n:4,nombre:"Consolidar",rango:"jul a dic 2027",
@@ -253,7 +255,6 @@ const FASES=[
   ],
   criterios:[{id:"f4_titular",txt:"Ser titular y evaluar Primera para 2028",manual:true}]}
 ];
-const CARGAS=[["Sentadilla","75 kg 4x5 RIR 3","100 kg 4x5"],["Peso muerto rumano","50 kg 3x8","70 kg 3x8"],["Búlgara","12,5 kg 3x8","17,5 kg 3x8"],["Jalón","41 kg 4x8 si no duele","50 kg 4x8"],["Press","Máquina agarre neutro","22,5 kg 4x8"],["Dominadas","Pausa hasta el alta","4x6"]];
 const PENDIENTES=[
  {g:"Ahora",items:[
   {id:"medico",t:"Hora al médico por la muñeca, con la eco",d:"Pregunta: qué tiene, cuándo atajo sin vendaje, ¿kine o férula?"},
@@ -438,10 +439,17 @@ function detalle(c){
 
 /* ---------- Render ---------- */
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// Peso del día: en la fase 1, semanas 1 y 2 al 70%; desde la 3 el peso base y +inc por semana hasta el tope.
+// En las otras fases parte en el base la semana 1. Barra redondeada a 2,5 kg; mancuernas a 1 kg bajo 10 y a 2,5 sobre eso.
+function carga(kg,d){const[b,inc,mx,u]=kg;const s=Math.max(1,semana(d||parse(sel)));
+  let w=S.fase===1?(s<=2?b*0.7:b+inc*(s-3)):b+inc*(s-1);w=Math.min(w,mx);
+  const st=u==="barra"?2.5:w<10?1:2.5;w=Math.max(st,Math.round(w/st)*st);
+  return String(w).replace(".",",")+" kg"+(u==="c/u"?" c/u":u==="lastre"?" de lastre":"")}
+function itemTxt(it){if(it&&it.kg)return esc(it.t)+' <b class="kg">'+carga(it.kg)+'</b>';return esc(typeof it==="object"?it.t:it)}
 function items(arr){return arr.map(it=>{
   if(it==="COPEN")return '<li>Copenhague corta (rodilla en el banco) 3 x '+S.copen.seg+' s por lado</li>';
-  if(typeof it==="object")return !S.muneca.alta&&it.sinAlta?'<li class="swap">'+esc(it.sinAlta)+'</li>':'<li>'+esc(it.t)+'</li>';
-  return '<li>'+esc(it)+'</li>'}).join("")}
+  if(typeof it==="object"&&!S.muneca.alta&&it.sinAlta)return '<li class="swap">'+itemTxt(it.sinAlta)+'</li>';
+  return '<li>'+itemTxt(it)+'</li>'}).join("")}
 
 const NIVELES=[[0,"Nada","No lo sientes"],[2,"Leve","Lo notas, pero te mueves igual"],[5,"Molesta","Te hace cambiar el movimiento o evitar algo"],[8,"Fuerte","Duele quieto o no puedes hacerlo"]];
 const PRUEBA={muneca:"Apoya la palma en la mesa y carga tu peso encima. Después aprieta fuerte un puño.",ingle:"Acostado, aprieta un cojín entre las rodillas 5 s. Después, de pie, abre una pierna hacia el lado.",rodilla:"Haz 5 sentadillas lo más profundo que puedas.",espalda:"Inclínate a tocarte los pies y gira el tronco a cada lado."};
@@ -519,7 +527,7 @@ function rHead(){
 function nombreSug(s){if(!s)return"";if(s.tipos[0]==="gym")return gymDe(s.g).nombre;return TIPOS[s.tipos[0]].label}
 function detalleSug(s,d){
   const t=s.tipos[0];
-  if(t==="gym"){const g=gymDe(s.g);return '<ul class="list">'+items(g.items)+'</ul><p class="small muted">'+esc(F().rpe)+'. Pesos en fierros.</p>'}
+  if(t==="gym"){const g=gymDe(s.g);return '<ul class="list">'+items(g.items)+'</ul><p class="small muted">'+esc(F().rpe)+'.</p>'}
   if(t==="rest")return '<p>Descansa o camina 30 min. Recuperar también es entrenar.</p>';
   return '<ul class="list">'+(S.muneca.alta?ARCO_SESION.slice(0,1):CANCHA_SIN_ALTA).map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul>';
 }
@@ -618,7 +626,8 @@ function rSecs(){
     (f.n<4?'<div class="row"><button class="btn'+(todas?"":" ghost")+'" data-act="avanzar">Pasar a fase '+(f.n+1)+'</button>'+(todas?"":'<span class="small muted">Te faltan criterios. Quedarte en esta fase está bien.</span>')+'</div>':'')+
     (f.n>1?'<button class="btn ghost sm" data-act="atras">Volver a fase '+(f.n-1)+'</button>':'')+
     '<div class="f" style="max-width:200px"><label for="fini">Inicio de la fase (lunes)</label><input type="date" id="fini" data-act="fini" value="'+esc(S.faseInicio[String(f.n)]||"")+'"></div>'+
-    (f.n<=2?'<div class="tw"><table><thead><tr><th>Ejercicio</th><th>Semana 1</th><th>Meta dic</th></tr></thead><tbody>'+CARGAS.map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>':'');
+    (()=>{const L=f.gym.flatMap(g=>g.items).map(it=>typeof it==="object"&&!S.muneca.alta&&it.sinAlta&&it.sinAlta.kg?it.sinAlta:it).filter(it=>it&&it.kg);
+      return L.length?'<div class="tw"><table><thead><tr><th>Ejercicio</th><th>Esta semana</th><th>Tope de la fase</th></tr></thead><tbody>'+L.map(it=>'<tr><td>'+esc(it.t)+'</td><td>'+carga(it.kg,new Date())+'</td><td>'+String(it.kg[2]).replace(".",",")+' kg'+(it.kg[3]==="c/u"?" c/u":"")+'</td></tr>').join("")+'</tbody></table></div>':''})();
   const ingle=((dia(HOY()).d||{}).ingle||0)>0||((dia(iso(add(new Date(),-1))).d||{}).ingle||0)>0;
   const ult=S.copen.subidas[S.copen.subidas.length-1];const desde=ult?diff(parse(ult),new Date()):99;
   const puede=!ingle&&desde>=7;

@@ -217,8 +217,8 @@ const FASES=[
   cuota:[{k:"gym",n:3,label:"Gimnasio"},{k:"cancha",n:1,label:"Cancha",tipos:["arco","partido"]}],
   rpe:"RPE 6 a 7, nada al fallo. Si las 3 series salen fáciles, súbele 2,5 kg igual",
   gym:[
-   {id:"A",nombre:"Gimnasio A",pierna:true,items:[{t:"Sentadilla con barra 3x8",kg:[60,2.5,80,"barra"]},{t:"Peso muerto rumano con barra 3x8",kg:[50,2.5,70,"barra"]},{t:"Zancada lateral con mancuernas 3x8 por lado",kg:[8,0.5,12,"c/u"]},{t:"Press con mancuernas en banco 3x10",kg:[15,0.5,22.5,"c/u"],sinAlta:{t:"Press de piso con mancuernas, agarre neutro, 3x10 (si duele, sáltalo)",kg:[10,0,10,"c/u"]}},{t:"Remo con mancuerna apoyado en banco 3x10",kg:[20,1,27.5,"c/u"],sinAlta:{t:"Remo con mancuerna apoyado, agarre neutro, 3x10 (si duele, sáltalo)",kg:[12.5,0,12.5,"c/u"]}},"COPEN","Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]},
-   {id:"B",nombre:"Gimnasio B",pierna:false,items:[{t:"Hip thrust con barra 3x10",kg:[50,2.5,80,"barra"]},{t:"Step-up al cajón con mancuernas 3x8 por lado",kg:[8,0.5,14,"c/u"]},"Curl nórdico asistido 3x5 (pies sujetos bajo una barra cargada o un compañero)",{t:"Press militar con mancuernas sentado 3x8",kg:[10,0.5,14,"c/u"],sinAlta:{t:"Press militar con mancuernas, agarre neutro, 3x8 (si duele, sáltalo)",kg:[7,0,7,"c/u"]}},{t:"Dominadas asistidas con banda 3x6",sinAlta:"Remo con mancuernas pecho apoyado en banco inclinado 3x10, 10 kg c/u, si no duele"},"Pallof press con banda 3x10 por lado (sin banda: dead bug 3x10 por lado)"]},
+   {id:"A",nombre:"Gimnasio A",pierna:true,items:[{t:"Sentadilla con barra 4x5, RIR 3",kg:[75,2.5,100,"barra"]},{t:"Peso muerto rumano con barra 3x8",kg:[50,2.5,70,"barra"]},{t:"Zancada lateral con mancuernas 3x8 por lado",kg:[8,0.5,12,"c/u"]},{t:"Press con mancuernas en banco 3x10",kg:[15,0.5,22.5,"c/u"],sinAlta:{t:"Press de piso con mancuernas, agarre neutro, 3x10 (si duele, sáltalo)",kg:[10,0,10,"c/u"]}},{t:"Remo con mancuerna apoyado en banco 3x10",kg:[20,1,27.5,"c/u"],sinAlta:{t:"Remo con mancuerna apoyado, agarre neutro, 3x10 (si duele, sáltalo)",kg:[12.5,0,12.5,"c/u"]}},"COPEN","Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]},
+   {id:"B",nombre:"Gimnasio B",pierna:false,items:[{t:"Hip thrust con barra 3x10",kg:[60,2.5,90,"barra"]},{t:"Step-up al cajón con mancuernas 3x8 por lado",kg:[8,0.5,14,"c/u"]},"Curl nórdico asistido 3x5 (pies sujetos bajo una barra cargada o un compañero)",{t:"Press militar con mancuernas sentado 3x8",kg:[10,0.5,14,"c/u"],sinAlta:{t:"Press militar con mancuernas, agarre neutro, 3x8 (si duele, sáltalo)",kg:[7,0,7,"c/u"]}},{t:"Dominadas asistidas con banda 3x6",sinAlta:"Remo con mancuernas pecho apoyado en banco inclinado 3x10, 10 kg c/u, si no duele"},"Pallof press con banda 3x10 por lado (sin banda: dead bug 3x10 por lado)"]},
    {id:"C",nombre:"Gimnasio C + agilidad",pierna:true,items:["Saltos pogo 3x15","Salto a cajón bajo 3x5","Desplazamiento lateral 6x8 s","Reacción a señal 6x5 s",{t:"Sentadilla búlgara con mancuernas 3x8",kg:[12.5,1,17.5,"c/u"]},{t:"Plancha lateral 3x30 s",sinAlta:"Plancha lateral sobre antebrazo 3x30 s"},"Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]}
   ],
   criterios:[
@@ -288,7 +288,7 @@ const fmt=d=>d.getDate()+" "+MES[d.getMonth()];
 const HOY=()=>iso(new Date());
 
 /* ---------- Estado ---------- */
-const DEFAULT={v:2,fase:1,faseInicio:{"1":"2026-10-19"},muneca:{alta:false,fecha:null},kineIngle:false,dias:{},copen:{seg:10,subidas:[]},tests:[],pendientes:{},manual:{},diasJuego:[1,3,4]};
+const DEFAULT={v:2,fase:1,faseInicio:{"1":"2026-10-26"},muneca:{alta:false,fecha:null},kineIngle:false,dias:{},copen:{seg:10,subidas:[]},tests:[],pendientes:{},manual:{},diasJuego:[1,3,4]};
 const clone=o=>JSON.parse(JSON.stringify(o));
 let S=clone(DEFAULT), docRef=null, timer=null, chain=Promise.resolve(), dirty=false;
 let sel=HOY(), calScroll=null;
@@ -439,10 +439,9 @@ function detalle(c){
 
 /* ---------- Render ---------- */
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-// Peso del día: en la fase 1, semanas 1 y 2 al 70%; desde la 3 el peso base y +inc por semana hasta el tope.
-// En las otras fases parte en el base la semana 1. Barra redondeada a 2,5 kg; mancuernas a 1 kg bajo 10 y a 2,5 sobre eso.
+// Peso del día: el base es el de la semana 1 de la fase (en la fase 1, las cargas "para volver" del plan) y sube inc por semana hasta el tope. Barra redondeada a 2,5 kg; mancuernas a 1 kg bajo 10 y a 2,5 sobre eso.
 function carga(kg,d){const[b,inc,mx,u]=kg;const s=Math.max(1,semana(d||parse(sel)));
-  let w=S.fase===1?(s<=2?b*0.7:b+inc*(s-3)):b+inc*(s-1);w=Math.min(w,mx);
+  let w=Math.min(b+inc*(s-1),mx);
   const st=u==="barra"?2.5:w<10?1:2.5;w=Math.max(st,Math.round(w/st)*st);
   return String(w).replace(".",",")+" kg"+(u==="c/u"?" c/u":u==="lastre"?" de lastre":"")}
 function itemTxt(it){if(it&&it.kg)return esc(it.t)+' <b class="kg">'+carga(it.kg)+'</b>';return esc(typeof it==="object"?it.t:it)}
@@ -516,7 +515,7 @@ function rHead(){
   const f=F(),s=semana(new Date());
   const SG=sug();const juego=k=>{const L=(dia(k).plan||[]).concat((SG[k]||{}).tipos||[]);return L.includes("partido")||L.includes("arco")};
   const prox=Object.keys(SG).concat(Object.keys(S.dias)).filter(k=>k>HOY()&&!(dia(k).a||[]).length&&juego(k)).sort()[0];
-  document.getElementById("phase").innerHTML="F"+f.n+" // "+f.nombre+"<small>"+(s>=1?"Semana "+s+(s%5===0?" · descarga, mitad del volumen":s<=2&&f.n===1?" · al 70% de tus cargas":""):"Parte el lunes "+fmt(ini()))+(prox?" · próximo juego: "+(prox===iso(add(new Date(),1))?"mañana":DIA[parse(prox).getDay()]+" "+fmt(parse(prox))):"")+"</small>";
+  document.getElementById("phase").innerHTML="F"+f.n+" // "+f.nombre+"<small>"+(s>=1?"Semana "+s+(s%5===0?" · descarga, mitad del volumen":""):"Parte el lunes "+fmt(ini()))+(prox?" · próximo juego: "+(prox===iso(add(new Date(),1))?"mañana":DIA[parse(prox).getDay()]+" "+fmt(parse(prox))):"")+"</small>";
   const lun=monday(new Date()),c=conteo(lun);
   const colors={gym:"var(--cyan)",cancha:"var(--yellow)",arco:"var(--pink)",partido:"var(--yellow)"};
   document.getElementById("quota").innerHTML=cuotaSemana(lun).map(q=>{const n=cuenta(q,c);

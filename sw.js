@@ -1,5 +1,5 @@
 // Bitácora del Arquero · service worker: permite instalarla y abrirla sin señal.
-const VERSION = 'arquero-1';
+const VERSION = 'arquero-2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', ev => {

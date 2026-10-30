@@ -77,8 +77,6 @@ button{cursor:pointer}
 .chip[aria-pressed="true"]{border-color:var(--cyan);color:var(--cyan)}
 .list{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.95rem}
 .list li.swap{color:var(--yellow)}
-.list .kg{color:var(--cyan);font-weight:700;white-space:nowrap}
-.list li.swap .kg{color:var(--yellow)}
 .list li::marker{color:var(--muted)}
 .alert{border:1px solid var(--k);background:color-mix(in srgb,var(--k) 10%,transparent);padding:10px 12px;font-size:.92rem;display:grid;gap:2px}
 .alert b{color:var(--k);text-transform:uppercase;letter-spacing:.05em;font-size:.82rem;font-family:var(--mono)}
@@ -222,7 +220,7 @@ const FASES=[
   rpe:"RPE 6 a 7, nada al fallo. Si las 3 series salen fáciles, súbele 2,5 kg igual",
   gym:[
    {id:"A",nombre:"Gimnasio A",pierna:true,items:[{t:"Sentadilla con barra 4x5, RIR 3",kg:[75,2.5,100,"barra"]},{t:"Peso muerto rumano con barra 3x8",kg:[50,2.5,70,"barra"]},{t:"Zancada lateral con mancuernas 3x8 por lado",kg:[8,0.5,12,"c/u"]},{t:"Press con mancuernas en banco 3x10",kg:[20,0.5,25,"c/u"],sinAlta:{t:"Press con mancuernas en banco 3x10 (si la muñeca molesta, agarre neutro)",kg:[20,0.5,25,"c/u"]}},{t:"Remo con barra 3x10",kg:[40,1.25,55,"barra"],sinAlta:{t:"Remo con barra 3x10 (si la muñeca molesta, usa straps)",kg:[40,1.25,55,"barra"]}},"COPEN","Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]},
-   {id:"B",nombre:"Gimnasio B",pierna:false,items:[{t:"Hip thrust con barra 3x10",kg:[60,2.5,90,"barra"]},{t:"Step-up al cajón con mancuernas 3x8 por lado",kg:[8,0.5,14,"c/u"]},"Curl nórdico asistido 3x5 (pies sujetos bajo una barra cargada o un compañero)",{t:"Press militar con mancuernas sentado 3x8",kg:[10,0.5,14,"c/u"],sinAlta:{t:"Press militar con mancuernas, agarre neutro, 3x8 (si duele, sáltalo)",kg:[7,0,7,"c/u"]}},{t:"Dominadas asistidas con banda 3x6",sinAlta:"Remo con mancuernas pecho apoyado en banco inclinado 3x10, 10 kg c/u, si no duele"},"Pallof press con banda 3x10 por lado (sin banda: dead bug 3x10 por lado)"]},
+   {id:"B",nombre:"Gimnasio B",pierna:false,items:[{t:"Step-up al cajón con mancuernas 3x8 por lado",kg:[8,0.5,14,"c/u"]},{t:"Press militar con mancuernas sentado 3x8",kg:[10,0.5,14,"c/u"],sinAlta:{t:"Press militar con mancuernas, agarre neutro, 3x8 (si duele, sáltalo)",kg:[7,0,7,"c/u"]}},{t:"Dominadas 3x6 (con banda si no salen las 6)",sinAlta:{t:"Remo con barra 3x10, agarre supino (si la muñeca molesta, usa straps)",kg:[40,1.25,55,"barra"]}},{t:"Press inclinado con mancuernas 3x10",kg:[15,0.5,20,"c/u"],sinAlta:{t:"Press inclinado con mancuernas 3x10 (si la muñeca molesta, agarre neutro)",kg:[15,0.5,20,"c/u"]}},{t:"Elevaciones laterales con mancuernas 3x12",kg:[8,0,10,"c/u"]},"Plancha frontal sobre antebrazos 3x30 s"]},
    {id:"C",nombre:"Gimnasio C + agilidad",pierna:true,items:["Saltos pogo 3x15","Salto a cajón bajo 3x5","Desplazamiento lateral 6x8 s","Reacción a señal 6x5 s",{t:"Sentadilla búlgara con mancuernas 3x8",kg:[12.5,1,17.5,"c/u"]},{t:"Plancha lateral 3x30 s",sinAlta:"Plancha lateral sobre antebrazo 3x30 s"},"Pelota entre rodillas 3x10 de 5 s · psoas con banda 3x10 por lado"]}
   ],
   criterios:[
@@ -305,6 +303,9 @@ function normal(x){
     for(const [k,r] of Object.entries(x&&x.dolor||{})){(s.dias[k]=s.dias[k]||{}).d=r}
     s.v=2; delete s.semanas; delete s.dolor; delete s.partidos; delete s.descargas;
   }
+  // La semana 1 de la fase 1 es la del 26 oct 2026, no la del 19 (se corrige una vez).
+  if(!s.f26&&s.faseInicio&&s.faseInicio["1"]==="2026-10-19"){s.faseInicio=Object.assign({},s.faseInicio,{"1":"2026-10-26"});s.cu=Date.now()}
+  s.f26=1;
   return s;
 }
 function lsLoad(){try{const r=localStorage.getItem(LS);return r?JSON.parse(r):null}catch(e){return null}}
@@ -383,6 +384,7 @@ const FIERRO_C=[[/^Sentadilla (con barra|trasera|pesada)/,["Squat (Barbell)"],1]
  [/^Zancada lateral/,["Lateral Lunge (Dumbbell)","Cossack Squat"]],[/^Press con mancuernas/,["Bench Press (Dumbbell)"],1],[/^Press banca/,["Bench Press (Barbell)"],1],
  [/^Remo con barra/,["Bent Over Row (Barbell)"]],[/^Remo con mancuernas/,["Bent Over One Arm Row (Dumbbell)"]],[/^Hip thrust/,["Hip Thrust (Barbell)"]],[/^Step-up/,["Step-up (Dumbbell)"]],
  [/^Curl nórdico/,["Nordic Hamstring Curl"]],[/^Press militar con mancuernas/,["Seated Overhead Press (Dumbbell)","Overhead Press (Dumbbell)"]],[/^Press militar con barra/,["Overhead Press (Barbell)"]],
+ [/^Press inclinado con mancuernas/,["Incline Bench Press (Dumbbell)"]],[/^Elevaciones laterales/,["Lateral Raise (Dumbbell)"]],[/^Plancha frontal/,["Plank"]],
  [/^Dominadas asistidas/,["Pull Up (Assisted)"]],[/^Dominadas lastradas/,["Pull Up (Weighted)","Pull Up"],1],[/^Dominadas/,["Pull Up"],1],[/^Pallof/,["Pallof Press (Band)","Pallof Press (Cable)"]],
  [/^Saltos pogo/,["Pogo Hops"]],[/^Salto a cajón|^Saltos al cajón/,["Box Jump"]],[/búlgara|^Búlgara/i,["Bulgarian Split Squat"]],[/^Plancha lateral/,["Side Plank"]]];
 function itemFierro(it){
@@ -395,7 +397,6 @@ function itemFierro(it){
   if(m[3])Object.assign(x,{time:+m[2],rest:45});
   else Object.assign(x,{lo:+m[2],hi:+m[2],rir:S.fase===1?3:2,rest:fx[2]?150:90});
   if(fx[2])x.main=1;if(!o.kg)x.np=1;
-  if(o.kg)x.tip="La Bitácora sugiere "+carga(o.kg,new Date())+" esta semana.";
   return x;
 }
 function rutinaFierro(){
@@ -418,7 +419,7 @@ function importar(txt){
   mergeRemote(R);persist();queueGist();render();note("Respaldo importado y combinado con lo que ya tenías.");
 }
 async function boot(){
-  const local=lsLoad(); if(local)S=normal(local);
+  const local=lsLoad(); if(local){S=normal(local);lsSave()}
   render();
   window.addEventListener("online",()=>gistSync(false));window.addEventListener("offline",()=>syncBadge());
   let db=null; try{db=window.claude&&window.claude.use?await window.claude.use("db"):null}catch(e){}
@@ -478,12 +479,9 @@ function detalle(c){
 
 /* ---------- Render ---------- */
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-// Peso del día: el base es el de la semana 1 de la fase (en la fase 1, las cargas "para volver" del plan) y sube inc por semana hasta el tope. Barra redondeada a 2,5 kg; mancuernas a 1 kg bajo 10 y a 2,5 sobre eso.
-function carga(kg,d){const[b,inc,mx,u]=kg;const s=Math.max(1,semana(d||parse(sel)));
-  let w=Math.min(b+inc*(s-1),mx);
-  const st=u==="barra"?2.5:w<10?1:2.5;w=Math.max(st,Math.round(w/st)*st);
-  return String(w).replace(".",",")+" kg"+(u==="c/u"?" c/u":u==="lastre"?" de lastre":"")}
-function itemTxt(it){if(it&&it.kg)return esc(it.t)+' <b class="kg">'+carga(it.kg)+'</b>';return esc(typeof it==="object"?it.t:it)}
+// Los pesos los decide Fierro, con tu historial. kg solo marca los ejercicios que progresan con carga.
+function itemTxt(it){return esc(typeof it==="object"?it.t:it)}
+const PESOS='<p class="small muted">Los pesos te los da Fierro. Si cambias de fase, toca "Pasar rutina a Fierro" en Pasar de fase.</p>';
 function items(arr){return arr.map(it=>{
   if(it==="COPEN")return '<li>Copenhague corta (rodilla en el banco) 3 x '+S.copen.seg+' s por lado</li>';
   if(typeof it==="object"&&!S.muneca.alta&&it.sinAlta)return '<li class="swap">'+itemTxt(it.sinAlta)+'</li>';
@@ -565,7 +563,7 @@ function rHead(){
 function nombreSug(s){if(!s)return"";if(s.tipos[0]==="gym")return gymDe(s.g).nombre;return TIPOS[s.tipos[0]].label}
 function detalleSug(s,d){
   const t=s.tipos[0];
-  if(t==="gym"){const g=gymDe(s.g);return '<ul class="list">'+items(g.items)+'</ul><p class="small muted">'+esc(F().rpe)+'.</p>'}
+  if(t==="gym"){const g=gymDe(s.g);return '<ul class="list">'+items(g.items)+'</ul><p class="small muted">'+esc(F().rpe)+'.</p>'+PESOS}
   if(t==="rest")return '<p>Descansa o camina 30 min. Recuperar también es entrenar.</p>';
   return '<ul class="list">'+(S.muneca.alta?ARCO_SESION.slice(0,1):CANCHA_SIN_ALTA).map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul>';
 }
@@ -583,7 +581,7 @@ function rDay(){
     body+=botones(a,"a",(t,v)=>t==="gym"?(a.includes("gym")?"Hecho: "+((gymDe(r.g)||{}).nombre||""):"Toca "+siguienteGym().nombre):(v.sub||""));
     if(a.includes("gym")){const g=gymDe(r.g)||siguienteGym();
       if(g.pierna&&sigJuego)alerts.push('<div class="alert a-warn"><b>Mañana juegas</b><span>Esta sesión es de pierna pesada. Si aún no la haces, cambia a '+esc((F().gym.find(x=>!x.pierna)||{}).nombre||"tren superior")+'.</span></div>');
-      body+='<div class="chips">'+F().gym.map(x=>'<button class="chip" data-act="gsel" data-g="'+x.id+'" aria-pressed="'+(x.id===g.id)+'">'+esc(x.nombre)+'</button>').join("")+'</div><ul class="list">'+items(g.items)+'</ul>'}
+      body+='<div class="chips">'+F().gym.map(x=>'<button class="chip" data-act="gsel" data-g="'+x.id+'" aria-pressed="'+(x.id===g.id)+'">'+esc(x.nombre)+'</button>').join("")+'</div><ul class="list">'+items(g.items)+'</ul>'+PESOS}
     if(a.includes("arco")||a.includes("partido")){
       const nJ=Object.entries(S.dias).filter(([x,v])=>x<=k&&(v.a||[]).some(t=>t==="arco"||t==="partido")).length;
       alerts.push('<div class="alert a-ok"><b>Volviste a la cancha</b><span>Juego número '+nJ+' desde que volviste. Anota una cosa que hiciste bien.</span></div>');
@@ -664,9 +662,7 @@ function rSecs(){
     (f.n<4?'<div class="row"><button class="btn'+(todas?"":" ghost")+'" data-act="avanzar">Pasar a fase '+(f.n+1)+'</button>'+(todas?"":'<span class="small muted">Te faltan criterios. Quedarte en esta fase está bien.</span>')+'</div>':'')+
     (f.n>1?'<button class="btn ghost sm" data-act="atras">Volver a fase '+(f.n-1)+'</button>':'')+
     '<div class="row"><button class="btn ghost sm" data-act="fierro">Pasar rutina a Fierro</button></div><p class="small muted" id="fxNote" role="status"></p>'+
-    '<div class="f" style="max-width:200px"><label for="fini">Inicio de la fase (lunes)</label><input type="date" id="fini" data-act="fini" value="'+esc(S.faseInicio[String(f.n)]||"")+'"></div>'+
-    (()=>{const L=f.gym.flatMap(g=>g.items).map(it=>typeof it==="object"&&!S.muneca.alta&&it.sinAlta&&it.sinAlta.kg?it.sinAlta:it).filter(it=>it&&it.kg);
-      return L.length?'<div class="tw"><table><thead><tr><th>Ejercicio</th><th>Esta semana</th><th>Tope de la fase</th></tr></thead><tbody>'+L.map(it=>'<tr><td>'+esc(it.t)+'</td><td>'+carga(it.kg,new Date())+'</td><td>'+String(it.kg[2]).replace(".",",")+' kg'+(it.kg[3]==="c/u"?" c/u":"")+'</td></tr>').join("")+'</tbody></table></div>':''})();
+    '<div class="f" style="max-width:200px"><label for="fini">Inicio de la fase (lunes)</label><input type="date" id="fini" data-act="fini" value="'+esc(S.faseInicio[String(f.n)]||"")+'"></div>';
   const ingle=((dia(HOY()).d||{}).ingle||0)>0||((dia(iso(add(new Date(),-1))).d||{}).ingle||0)>0;
   const ult=S.copen.subidas[S.copen.subidas.length-1];const desde=ult?diff(parse(ult),new Date()):99;
   const puede=!ingle&&desde>=7;
